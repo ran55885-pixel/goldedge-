@@ -101,8 +101,12 @@ select, input { font-family: var(--mono); background: rgba(3, 12, 30, .8); color
 /* ---------- main grid ---------- */
 .grid { display: grid; grid-template-columns: 300px minmax(0, 1fr) 380px; gap: 12px; align-items: start; }
 .col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.big { font-family: var(--mono); font-size: 40px; line-height: 1.05; color: var(--white);
-  text-shadow: 0 0 14px rgba(0, 229, 255, .45); letter-spacing: .02em; word-break: break-all; }
+.bigrow { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.big { font-family: var(--mono); font-size: clamp(26px, 2.5vw, 38px); line-height: 1.05; color: var(--white);
+  text-shadow: 0 0 14px rgba(0, 229, 255, .45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.ccy { font-family: var(--head); font-size: 13px; color: var(--gold); letter-spacing: .12em; }
+.attrib { font-family: var(--mono); font-size: 10px; color: var(--mute); text-align: right; margin-top: 4px; }
+.attrib a { color: var(--dim); }
 .kv { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; font-family: var(--mono); font-size: 13px; }
 .kv .k { color: var(--dim); } .kv .v { text-align: right; }
 .label-tag { font-family: var(--head); font-size: 9px; letter-spacing: .14em; padding: 2px 6px; border-radius: 3px; }
@@ -140,8 +144,8 @@ select, input { font-family: var(--mono); background: rgba(3, 12, 30, .8); color
 .panetag { position: absolute; left: 8px; top: 4px; z-index: 4; font-family: var(--mono); font-size: 10px; color: var(--dim); }
 
 /* ---------- bot desks ---------- */
-.desks { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 8px 0 4px; }
-.desk { position: relative; height: 196px; border-radius: 10px; border: 1px solid rgba(110, 190, 255, .18);
+.desks { position: relative; isolation: isolate; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 8px 0 4px; }
+.desk { position: relative; z-index: 1; height: 196px; border-radius: 10px; border: 1px solid rgba(110, 190, 255, .18);
   background: radial-gradient(120% 90% at 50% 100%, rgba(0, 40, 90, .35), transparent 70%); overflow: hidden; cursor: pointer; }
 .desk:hover { border-color: var(--c); box-shadow: 0 0 16px color-mix(in srgb, var(--c) 40%, transparent); }
 .desk .iso { position: absolute; left: 50%; top: 92px; width: 120px; height: 70px; transform: translateX(-50%) rotateX(58deg) rotateZ(-38deg);
@@ -161,7 +165,7 @@ select, input { font-family: var(--mono); background: rgba(3, 12, 30, .8); color
 .desk .st { position: absolute; left: 8px; right: 8px; bottom: 8px; font-family: var(--mono); font-size: 11px; color: var(--txt);
   background: rgba(0, 8, 22, .7); border: 1px solid rgba(110, 190, 255, .15); border-radius: 4px; padding: 4px 6px; height: 34px;
   overflow: hidden; line-height: 1.3; }
-.coin { position: absolute; width: 26px; height: 26px; border-radius: 50%; pointer-events: none; z-index: 0;
+.coin { position: absolute; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%; pointer-events: none; z-index: 2;
   background: radial-gradient(circle at 35% 30%, #fff6c8, #f5c542 45%, #9a6b00 80%); box-shadow: 0 0 14px rgba(245, 197, 66, .7);
   animation: spin 3.6s linear infinite, float 7s ease-in-out infinite; opacity: .85; }
 .coin::after { content: "$"; position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--head);
@@ -215,7 +219,8 @@ select, input { font-family: var(--mono); background: rgba(3, 12, 30, .8); color
 .modal { position: fixed; inset: 0; background: rgba(0, 3, 10, .75); z-index: 50; display: none; align-items: center; justify-content: center; padding: 16px; }
 .modal.open { display: flex; }
 .modal .box { width: min(980px, 100%); max-height: 88vh; overflow: auto; }
-.modal .close { position: absolute; right: 12px; top: 10px; }
+.modal .close { position: absolute; right: 12px; top: 10px; z-index: 2; }
+.modal .box h3:first-child { padding-right: 80px; }
 pre.cfg { font-family: var(--mono); font-size: 11.5px; color: #bfe6ff; background: rgba(0, 8, 22, .7); border-radius: 6px; padding: 8px; max-height: 260px; overflow: auto; }
 .toast { position: fixed; right: 16px; bottom: 60px; z-index: 60; font-family: var(--mono); background: rgba(0, 20, 50, .95);
   border: 1px solid var(--cyan); padding: 10px 14px; border-radius: 6px; display: none; }

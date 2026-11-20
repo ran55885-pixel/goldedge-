@@ -40,7 +40,7 @@
     <div class="grid">
       <div class="col left">
         <div class="panel"><h3>CURRENT BALANCE <span class="sub" id="balLabel"></span></h3>
-          <div class="big" id="balance">--</div>
+          <div class="bigrow"><span class="big" id="balance">--</span><span class="ccy" id="balCcy"></span></div>
           <div class="kv" style="margin-top:8px">
             <span class="k">TOTAL PNL</span><span class="v" id="totalPnl">--</span>
             <span class="k">UNREALIZED</span><span class="v" id="unreal">--</span>
@@ -67,6 +67,7 @@
           <div class="srcline"><span id="srcText">--</span><span id="diffText"></span><span id="ctxText"></span></div>
           <div class="chartwrap"><div id="chart"></div><canvas id="overlay"></canvas><div class="panetag" id="volTag"></div></div>
           <div class="cvdwrap"><div id="cvd"></div><div class="panetag">CVD (tick-volume estimate) · divergences ◆</div></div>
+          <div class="attrib">Charts: <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts™</a> (Apache-2.0)</div>
         </div>
         <div class="panel" id="floorDesks"><h3>THE TEAM <span class="sub">9 cooperating bots</span></h3>
           <div class="desks" id="desks"></div></div>

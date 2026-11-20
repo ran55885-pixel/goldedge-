@@ -18,7 +18,7 @@ const Floor = (() => {
   function init() {
     const el = document.getElementById("chart");
     const common = {
-      layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f9cc0", fontFamily: "ShareTechMono" },
+      layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f9cc0", fontFamily: "ShareTechMono", attributionLogo: false },
       grid: { vertLines: { color: "rgba(60,110,180,0.08)" }, horzLines: { color: "rgba(60,110,180,0.08)" } },
       timeScale: { timeVisible: true, secondsVisible: false, borderColor: "rgba(110,190,255,0.25)", rightOffset: 8 },
       rightPriceScale: { borderColor: "rgba(110,190,255,0.25)" },
@@ -29,8 +29,9 @@ const Floor = (() => {
       borderDownColor: "#ff3b3b", wickUpColor: "#8dffb0", wickDownColor: "#ff8a8a" });
     vol = chart.addHistogramSeries({ priceScaleId: "vol", priceFormat: { type: "volume" }, lastValueVisible: false, priceLineVisible: false });
     chart.priceScale("vol").applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
+    // VWAP lines never drive the price scale (a far weekly VWAP must not crush the candles)
     const mk = (color, style, width) => chart.addLineSeries({ color, lineStyle: style, lineWidth: width, lastValueVisible: false,
-      priceLineVisible: false, crosshairMarkerVisible: false });
+      priceLineVisible: false, crosshairMarkerVisible: false, autoscaleInfoProvider: () => null });
     vw = { d: mk("#00e5ff", 0, 2), du1: mk("rgba(0,229,255,.55)", 1, 1), dl1: mk("rgba(0,229,255,.55)", 1, 1),
       du2: mk("rgba(0,229,255,.45)", 2, 1), dl2: mk("rgba(0,229,255,.45)", 2, 1), w: mk("#b388ff", 0, 2) };
     cvdChart = LightweightCharts.createChart(document.getElementById("cvd"), { ...common, timeScale: { ...common.timeScale, visible: false } });
@@ -125,10 +126,14 @@ const Floor = (() => {
     const top = Math.min(y1, y2), h = Math.max(2, Math.abs(y1 - y2));
     g.fillStyle = fill; g.fillRect(x1, top, x2 - x1, h);
     if (stroke) { g.strokeStyle = stroke; g.lineWidth = 1; g.strokeRect(x1 + .5, top + .5, x2 - x1 - 1, h - 1); }
-    if (label) { g.fillStyle = stroke || "#cfe"; g.font = "10px ShareTechMono"; g.fillText(label, Math.max(4, x1 + 3), top + 10); }
+    if (label && free(top)) { g.fillStyle = stroke || "#cfe"; g.font = "10px ShareTechMono"; g.fillText(label, Math.max(4, x1 + 3), top + 10); }
   }
+  let usedY = [];
+  const free = (y) => { if (usedY.some((u) => Math.abs(u - y) < 11)) return false; usedY.push(y); return true; };
   function hline(x1, x2, p, color, dash, label, alignRight) {
     const y = yOf(p); if (y == null) return;
+    if (y < -5 || y > overlay.clientHeight + 5) return;
+    if (label && !free(y)) label = "";
     g.strokeStyle = color; g.setLineDash(dash || []); g.lineWidth = 1;
     g.beginPath(); g.moveTo(x1, y + .5); g.lineTo(x2, y + .5); g.stroke(); g.setLineDash([]);
     if (label) { g.fillStyle = color; g.font = "10px ShareTechMono"; const w = g.measureText(label).width; g.fillText(label, alignRight ? x2 - w - 4 : x1 + 3, y - 3); }
@@ -138,7 +143,7 @@ const Floor = (() => {
     if (!overlay || !data) return;
     const W = overlay.clientWidth, H = overlay.clientHeight, dpr = window.devicePixelRatio || 1;
     if (overlay.width !== W * dpr || overlay.height !== H * dpr) { overlay.width = W * dpr; overlay.height = H * dpr; }
-    g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+    g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H); usedY = [];
     const L = data.layers || {}, right = W - 62;
     if (on.sessions) (L.sessions || []).forEach((s) => {
       const x1 = xOf(s.start), x2 = xOf(s.end); if (x1 == null || x2 == null || x2 < 0 || x1 > right) return;

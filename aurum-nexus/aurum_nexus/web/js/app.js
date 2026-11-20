@@ -45,8 +45,21 @@
     render(); loadEquity();
   }
 
+  let wsOpen = false;
+  async function poll() {
+    if (wsOpen) return;
+    try {
+      const st = await U.api("/api/state");
+      if (st && st.symbols) { const first = !S || !S.symbols; S = st; if (first) firstRender(); else render(); }
+      const ev = await U.api("/api/events?n=40");
+      ev.filter((e) => !events.length || e.ts > events[events.length - 1].ts).forEach(addEvent);
+    } catch (e) {}
+  }
+  setInterval(poll, 2000);   // fallback when the WebSocket is unavailable
+
   function connect() {
     const ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws");
+    ws.onopen = () => { wsOpen = true; };
     ws.onmessage = (m) => {
       const msg = JSON.parse(m.data);
       if (msg.type === "state" && msg.state && msg.state.symbols) {
@@ -55,7 +68,7 @@
         if (first) firstRender(); else render();
       } else if (msg.type === "events") msg.events.forEach(addEvent);
     };
-    ws.onclose = (e) => { if (e.code === 4401) location.href = "/login"; else setTimeout(connect, 2000); setDot("bad"); };
+    ws.onclose = (e) => { wsOpen = false; if (e.code === 4401) location.href = "/login"; else setTimeout(connect, 3000); };
   }
   const setDot = (c) => { $("statusDot").className = "dot " + c; };
 
@@ -153,7 +166,8 @@
     }
     $("balLabel").textContent = label;
     $("balance").classList.toggle("state-STALE", grey);
-    U.countTo($("balance"), bal, (v) => (U.isNum(v) ? U.fmt(v) + " " + ccy : "NO DATA"));
+    U.countTo($("balance"), bal, (v) => (U.isNum(v) ? U.fmt(v) : "NO DATA"));
+    $("balCcy").textContent = U.isNum(bal) ? ccy : "";
     const st = S.stats || {};
     const tp = $("totalPnl"); U.countTo(tp, st.pnl, (v) => U.signed(v)); tp.className = "v " + U.cls(st.pnl);
     const ur = $("unreal"); U.countTo(ur, unreal, (v) => U.signed(v)); ur.className = "v " + U.cls(unreal);
@@ -218,7 +232,7 @@
 
   // ------------------------------------------------------------------ DXY
   function initDxy() {
-    dxyChart = LightweightCharts.createChart($("dxychart"), { autoSize: true, layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f9cc0", fontFamily: "ShareTechMono" },
+    dxyChart = LightweightCharts.createChart($("dxychart"), { autoSize: true, layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f9cc0", fontFamily: "ShareTechMono", attributionLogo: false },
       grid: { vertLines: { visible: false }, horzLines: { color: "rgba(60,110,180,.08)" } }, timeScale: { timeVisible: true, borderColor: "rgba(110,190,255,.2)" }, rightPriceScale: { borderColor: "rgba(110,190,255,.2)" } });
     dxySeries = dxyChart.addCandlestickSeries({ upColor: "#00e5ff", downColor: "#ff3df2", borderVisible: false, wickUpColor: "#00e5ff", wickDownColor: "#ff3df2",
       priceFormat: { type: "price", precision: 3, minMove: 0.001 } });
@@ -287,7 +301,7 @@
     const box = $("desks"), tabs = $("botTabs");
     box.innerHTML = DESK_ORDER.map((n) => `<div class="desk" data-bot="${n}"><div class="nm">${n}</div><div class="cnt"></div>
       <div class="iso"></div><div class="screen"><canvas width="184" height="108"></canvas></div><div class="ghost-slot"></div><div class="st">waiting for first cycle…</div></div>`).join("");
-    for (let i = 0; i < 5; i++) { const c = document.createElement("div"); c.className = "coin"; c.style.left = (8 + i * 21) + "%"; c.style.top = (6 + (i % 2) * 70) + "%"; c.style.animationDelay = `${-i * 0.7}s, ${-i * 1.3}s`; document.getElementById("floorDesks").appendChild(c); }
+    for (let i = 0; i < 5; i++) { const c = document.createElement("div"); c.className = "coin"; const spots = [[33.35, 33.2], [66.65, 33.2], [33.35, 66.6], [66.65, 66.6], [50, 1.5]]; c.style.left = spots[i][0] + "%"; c.style.top = `calc(${spots[i][1]}% - 11px)`; c.style.animationDelay = `${-i * 0.7}s, ${-i * 1.3}s`; box.appendChild(c); }
     box.querySelectorAll(".desk").forEach((d) => d.addEventListener("click", () => openBot(d.dataset.bot)));
     tabs.innerHTML = DESK_ORDER.map((n) => `<button data-bot="${n}">${n}</button>`).join("");
     tabs.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => openBot(b.dataset.bot)));
@@ -329,7 +343,7 @@
 
   // ------------------------------------------------------------------ equity
   function initEquity() {
-    eqChart = LightweightCharts.createChart($("equity"), { autoSize: true, layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f9cc0", fontFamily: "ShareTechMono" },
+    eqChart = LightweightCharts.createChart($("equity"), { autoSize: true, layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f9cc0", fontFamily: "ShareTechMono", attributionLogo: false },
       grid: { vertLines: { visible: false }, horzLines: { color: "rgba(60,110,180,.08)" } }, timeScale: { timeVisible: true, borderColor: "rgba(110,190,255,.2)" }, rightPriceScale: { borderColor: "rgba(110,190,255,.2)" } });
     eqSeries = eqChart.addAreaSeries({ lineColor: "#39ff14", topColor: "rgba(57,255,20,.35)", bottomColor: "rgba(57,255,20,0)", lineWidth: 2, lastValueVisible: true });
   }
@@ -374,7 +388,7 @@
       let realHtml = "";
       if (r) {
         const st = r.status || "NO DATA", grey = st !== "OK";
-        realHtml = `<div class="${grey ? "state-STALE" : ""}"><div class="mono dim" style="font-size:11px">${U.esc(r.holder || "")} · login ${r.login ?? "n/a"} · ${U.esc(r.server || "")} · ${U.esc(r.company || "")} · 1:${r.leverage ?? "n/a"} · ${r.currency || ""}</div>
+        realHtml = `<div class="${grey ? "state-STALE" : ""}"><div class="mono dim" style="font-size:11px">${U.esc(r.holder || "")} · login ${r.login ?? a.login_cfg ?? "n/a"} · ${U.esc(r.server || a.server_cfg || "")}${r.company ? " · " + U.esc(r.company) : ""} · leverage ${r.leverage ? "1:" + r.leverage : "n/a"}${r.currency ? " · " + r.currency : ""}</div>
           <div class="figs">${fig("BALANCE", U.money(r.balance))}${fig("EQUITY", U.money(r.equity))}${fig("FLOATING P/L", U.signed(r.profit), U.cls(r.profit))}
           ${fig("MARGIN", U.money(r.margin))}${fig("FREE MARGIN", U.money(r.margin_free))}${fig("MARGIN LEVEL", U.isNum(r.margin_level) ? r.margin_level.toFixed(0) + "%" : "n/a")}
           ${fig("TODAY REALIZED", U.signed(r.realized_today), U.cls(r.realized_today))}${fig("STATUS", st, st === "OK" ? "green" : "red")}${fig("LAST SYNC", r.last_ok ? U.hhmmss(r.last_ok) : "n/a")}</div>

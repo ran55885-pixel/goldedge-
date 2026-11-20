@@ -12,7 +12,7 @@ async def main(a):
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     async with async_playwright() as p:
-        b = await p.chromium.launch()
+        b = await p.chromium.launch(executable_path=a.executable) if a.executable else await p.chromium.launch()
         ctx = await b.new_context(viewport={"width": 1440, "height": 900}, device_scale_factor=a.scale)
         page = await ctx.new_page()
         await page.goto(a.url + "/login")
@@ -60,4 +60,5 @@ if __name__ == "__main__":
     ap.add_argument("--out", default="screenshots")
     ap.add_argument("--scale", type=float, default=2)
     ap.add_argument("--wait", type=float, default=8)
+    ap.add_argument("--executable", default=None, help="path to a Chromium binary (optional)")
     asyncio.run(main(ap.parse_args()))

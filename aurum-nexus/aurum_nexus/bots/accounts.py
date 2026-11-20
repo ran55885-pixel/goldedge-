@@ -210,6 +210,7 @@ class AccountsManager(Bot):
                      "positions": [self._pos_view(p, trade_risk) for p in h.paper.positions()],
                      "start_balance": h.paper.start_balance}
         return {"name": h.name, "kind": h.cfg.kind, "mode": h.mode, "live_reason": h.live_reason,
+                "login_cfg": h.cfg.login or None, "server_cfg": h.cfg.server or None,
                 "paused": h.paused, "enabled": h.cfg.enabled, "risk_pct": h.cfg.risk_pct,
                 "symbols": h.cfg.symbols, "real": real, "paper": paper, "attempts": h.attempts,
                 "next_retry": h.next_retry if not h.connected else None}
