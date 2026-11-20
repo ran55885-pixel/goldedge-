@@ -14,6 +14,6 @@ build/out/
 dist/
 build/pyinstaller/
 *.spec.bak
-reports/
+/reports/
 config/accounts.yaml
 config/proposals/
