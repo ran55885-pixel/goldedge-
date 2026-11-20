@@ -1,0 +1,49 @@
+# Aurum Nexus - accounts. Copy to config/accounts.yaml and edit.
+# One worker process per MT5 account, each bound to its OWN portable MT5 terminal installation
+# (copy the MT5 folder per account and start it once with /portable).
+# Passwords are NEVER written here: password_env names a variable in .env.
+#
+# Live trading needs ALL of: system.mode=live + mode: live + allow_live: true (+ allow_real: true for a
+# REAL account) + typing "I UNDERSTAND" at start (or --yes-live). Otherwise the account trades on PAPER.
+accounts:
+  - name: icm-demo                      # unique name shown on the dashboard
+    kind: mt5                           # mt5 | paper_only
+    login: 12345678
+    server: ICMarketsSC-Demo
+    terminal_path: 'C:\MT5\icm-demo\terminal64.exe'
+    password_env: MT5_PASSWORD_DEMO1    # value lives in .env
+    server_utc_offset_hours: 2          # broker server time offset (GMT+2 winter / +3 summer for most brokers)
+    mode: paper                         # paper | live
+    allow_live: false
+    allow_real: false
+    risk_pct: 0.5                       # % of equity risked per trade (max 3)
+    symbols: [XAUUSD, EURUSD, GBPUSD, USDJPY]   # empty = all enabled symbols
+    symbol_map: {}                      # optional explicit broker names, e.g. {XAUUSD: XAUUSD.m}
+    limits:                             # optional per-account overrides (can only be stricter by convention)
+      max_trades_per_day: 8
+      daily_max_loss_pct: 2.0
+      max_concurrent_positions: 3
+    magic: 770077
+    enabled: true
+
+  - name: pepper-real
+    kind: mt5
+    login: 87654321
+    server: Pepperstone-Live
+    terminal_path: 'C:\MT5\pepper-real\terminal64.exe'
+    password_env: MT5_PASSWORD_REAL1
+    server_utc_offset_hours: 2
+    mode: paper                         # switch to live only after a demo month
+    allow_live: false
+    allow_real: false                   # REAL money: requires allow_real: true as well
+    risk_pct: 0.25
+    symbols: [XAUUSD]
+    enabled: false
+
+  - name: paper-lab
+    kind: paper_only                    # no terminal: simulated fills on the analysis feed prices
+    starting_balance: 10000
+    currency: USD
+    risk_pct: 0.5
+    symbols: []
+    enabled: true

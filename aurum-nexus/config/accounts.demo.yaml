@@ -1,0 +1,22 @@
+# Demo configuration used by run_demo.bat / run_demo.sh when config/accounts.yaml does not exist.
+# Safe by design: paper only. The MT5 demo entry shows DISCONNECTED until you install a terminal,
+# fill login/server/terminal_path and put the password in .env (MT5_PASSWORD_DEMO1).
+accounts:
+  - name: PAPER-USD
+    kind: paper_only
+    starting_balance: 10000
+    currency: USD
+    risk_pct: 0.5
+    enabled: true
+  - name: MT5-DEMO
+    kind: mt5
+    login: 0
+    server: YourBroker-Demo
+    terminal_path: 'C:\MT5\demo1\terminal64.exe'
+    password_env: MT5_PASSWORD_DEMO1
+    server_utc_offset_hours: 2
+    mode: paper
+    allow_live: false
+    allow_real: false
+    risk_pct: 0.5
+    enabled: true

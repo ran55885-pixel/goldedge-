@@ -1,0 +1,20 @@
+# Aurum Nexus - core requirements (all platforms)
+fastapi>=0.110
+uvicorn>=0.29
+httpx>=0.27
+pyyaml>=6.0
+numpy>=1.26
+pandas>=2.1
+matplotlib>=3.8
+python-dotenv>=1.0
+qrcode>=7.4
+pillow>=10.0
+tzdata>=2024.1
+# tests
+pytest>=8.0
+pytest-asyncio>=0.23
+# Windows only (MT5 terminal bridge, desktop window, tray, exe build):
+MetaTrader5>=5.0.45; sys_platform == "win32"
+pywebview>=5.0; sys_platform == "win32"
+pystray>=0.19; sys_platform == "win32"
+pyinstaller>=6.5; sys_platform == "win32"

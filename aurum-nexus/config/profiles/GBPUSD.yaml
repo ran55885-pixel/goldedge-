@@ -1,0 +1,210 @@
+# Strategy profile for GBPUSD (versioned; edited by the Strategist, approvals on the dashboard)
+symbol: GBPUSD
+version: 1
+locked: false
+updated: null
+notes: 'GBPUSD: London bos_retest focus, London/NY sessions'
+entry_timeframes:
+- M1
+- M5
+- M15
+sessions_allowed:
+- london
+- newyork
+- overlap
+asia_opt_in: false
+playbooks:
+  zone_reaction:
+    enabled: true
+    weight: 1.0
+    sessions:
+    - london_open
+    - ny_open
+    - overlap
+    - london
+    - newyork
+    entry: limit
+    timeframes:
+    - M1
+    - M5
+    - M15
+  sweep_reversal:
+    enabled: true
+    weight: 1.0
+    sessions:
+    - london_open
+    - ny_open
+    - overlap
+    - london
+    - newyork
+    entry: market
+    timeframes:
+    - M1
+    - M5
+    - M15
+  bos_retest:
+    enabled: true
+    weight: 1.25
+    sessions:
+    - london_open
+    - london
+    - overlap
+    entry: limit
+    timeframes:
+    - M1
+    - M5
+    - M15
+  fvg_ob:
+    enabled: true
+    weight: 1.0
+    sessions:
+    - london_open
+    - ny_open
+    - overlap
+    - london
+    - newyork
+    entry: limit
+    timeframes:
+    - M1
+    - M5
+    - M15
+  range_breakout:
+    enabled: true
+    weight: 0.9
+    sessions:
+    - london_open
+    - ny_open
+    - overlap
+    - london
+    - newyork
+    entry: market
+    timeframes:
+    - M1
+    - M5
+    - M15
+  orb:
+    enabled: true
+    weight: 1.0
+    sessions:
+    - london_open
+    - ny_open
+    entry: market
+    timeframes:
+    - M1
+    - M5
+  vwap_reversion:
+    enabled: true
+    weight: 0.9
+    sessions:
+    - london
+    - newyork
+    - overlap
+    entry: market
+    timeframes:
+    - M1
+    - M5
+    - M15
+  wyckoff:
+    enabled: true
+    weight: 0.9
+    sessions:
+    - london_open
+    - ny_open
+    - overlap
+    - london
+    - newyork
+    entry: market
+    timeframes:
+    - M1
+    - M5
+    - M15
+  london_judas:
+    enabled: true
+    weight: 1.15
+    sessions:
+    - london_open
+    entry: market
+    timeframes:
+    - M1
+    - M5
+  ny_open_reversal:
+    enabled: true
+    weight: 1.0
+    sessions:
+    - ny_open
+    entry: market
+    timeframes:
+    - M1
+    - M5
+  second_leg:
+    enabled: true
+    weight: 1.0
+    sessions:
+    - london_open
+    - ny_open
+    - overlap
+    - london
+    - newyork
+    entry: market
+    timeframes:
+    - M1
+    - M5
+  asia_range_reversion:
+    enabled: false
+    weight: 0.8
+    sessions:
+    - asia
+    entry: market
+    timeframes:
+    - M5
+    - M15
+stops:
+  style: structure
+  atr_buffer_mult: 0.25
+  min_atr: 0.4
+  max_atr: 3.0
+targets:
+  tp1_rr: 1.0
+  tp1_fraction: 0.5
+  tp2_fraction: 0.3
+  tp2_rr_default: 2.0
+  trail: m5_structure
+time_targets:
+  reaction_bars: 3
+  t1_mult: 2.0
+  t2_mult: 2.0
+regime_preferences:
+  trend:
+    prefer:
+    - bos_retest
+    - second_leg
+    - fvg_ob
+    - orb
+    avoid:
+    - vwap_reversion
+    - wyckoff
+  range:
+    prefer:
+    - vwap_reversion
+    - wyckoff
+    - zone_reaction
+    - sweep_reversal
+    avoid:
+    - range_breakout
+  expansion:
+    prefer:
+    - range_breakout
+    - orb
+    - second_leg
+    avoid:
+    - vwap_reversion
+  compression:
+    prefer:
+    - range_breakout
+    - sweep_reversal
+    avoid: []
+orb_minutes: 15
+orb_stop: mid
+risk_mult: 1.0
+min_score_offset: 0
+regime_overrides: {}

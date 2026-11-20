@@ -1,0 +1,2 @@
+"""The 9 cooperating bots: SCANNER, LEVELS, SIGNAL, RISK (+ Trade Manager), EXECUTION, GUARDIAN,
+ACCOUNTS, ANALYST, STRATEGIST."""

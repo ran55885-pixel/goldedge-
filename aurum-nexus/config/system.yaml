@@ -1,0 +1,393 @@
+# Aurum Nexus - system settings (all keys documented in README_he.md section 5).
+# Values shown are the defaults. Safety floors are enforced in code and cannot be relaxed:
+#   risk.min_rr >= 1.0, risk.min_score >= 70, Guardian veto always on, no live trading on fallback data.
+# Secrets never go here - use .env (see .env.example).
+system:
+  name: Aurum Nexus
+  mode: paper
+  price_source: auto
+  analysis_account: auto
+  server_utc_offset_hours: 2
+  day_boundary:
+    tz: America/New_York
+    time: '17:00'
+  cycle_seconds: 1.0
+  data_dir: data
+  stale_after_seconds: 6
+  paper_on_fallback: true
+  paper_starting_balance: 10000.0
+  paper_currency: USD
+symbols:
+  enabled:
+  - XAUUSD
+  - EURUSD
+  - GBPUSD
+  - USDJPY
+  optional:
+  - XAGUSD
+  - AUDUSD
+  - NZDUSD
+  - USDCAD
+  - USDCHF
+  - EURJPY
+  - GBPJPY
+  - AUDJPY
+  suffix_candidates:
+  - ''
+  - .m
+  - m
+  - .r
+  - .pro
+  - .ecn
+  - -ecn
+  - .a
+  - _i
+  - .i
+  - +
+  - .std
+  - .raw
+  - '#'
+  levels_round_steps:
+    adr_fractions:
+    - 0.25
+    - 0.5
+    - 1.0
+    price_fractions_fallback:
+    - 0.0025
+    - 0.005
+    - 0.01
+  usd_exposure_max_positions: 3
+  same_currency_max_positions: 2
+  correlation_block_threshold: 0.75
+scanner:
+  htf:
+  - D1
+  - H4
+  - H1
+  ltf:
+  - M15
+  - M5
+  - M1
+  swing_lookback:
+    D1: 2
+    H4: 2
+    H1: 3
+    M15: 3
+    M5: 3
+    M1: 3
+  zone:
+    impulse_atr_mult: 1.5
+    impulse_body_ratio: 0.55
+    base_max_bars: 3
+    base_max_range_atr: 0.9
+    max_touches: 2
+    max_zones: 12
+  pivot_cluster_atr_mult: 0.35
+  equal_level_atr_mult: 0.12
+  vp_rows: 80
+  value_area_pct: 0.7
+  atr_period: 14
+  adr_days: 14
+  bars:
+    D1: 120
+    H4: 300
+    H1: 500
+    M15: 700
+    M5: 900
+    M1: 1500
+levels:
+  cluster_atr_mult: 0.35
+  top_n: 6
+  watch_atr_mult: 1.0
+  ready_rvol: 1.5
+  ready_wick_ratio: 0.5
+  ready_valid_bars: 6
+  broken_closes: 2
+  broken_rvol: 1.2
+  grade_thresholds:
+    A+: 80
+    A: 65
+    B: 50
+dxy:
+  broker_symbols:
+  - DXY
+  - USDX
+  - DX.f
+  - USDIDX
+  - DXY.cash
+  - USDINDEX
+  - DX
+  corr_bars: 192
+  decoupled_abs_corr: 0.3
+  max_modifier: 10
+  block_on_dxy_breakout: true
+  shock_atr_mult: 2.0
+signal:
+  entry_timeframes:
+  - M1
+  - M5
+  - M15
+  adr_exhaustion_pct: 85
+  weights:
+    zone_quality: 15
+    confluence: 15
+    confirmation: 15
+    bias: 15
+    volume_flow: 20
+    proximity: 5
+    stop_quality: 10
+    conditions: 5
+  modifier_caps:
+    levels_ready: 8
+    dxy: 10
+    regime: 5
+    sentiment_macro: 5
+    seasonality: 5
+    analyst: 15
+    total: 25
+  delta_method: clv
+  rvol_days: 10
+  orb_minutes:
+  - 15
+  - 30
+  asia_gold_opt_in: false
+risk:
+  min_rr: 1.0
+  min_score: 70
+  default_risk_pct: 0.5
+  atr_buffer_mult: 0.25
+  tp1_rr: 1.0
+  tp1_fraction: 0.5
+  move_be_after_tp1: true
+  volatility_scaling: false
+  loss_streak_reduction:
+    after_losses: 2
+    factor: 0.5
+  drawdown_reduction:
+  - dd_pct: 5.0
+    factor: 0.75
+  - dd_pct: 10.0
+    factor: 0.5
+  equity_curve_filter:
+    enabled: true
+    lookback_trades: 10
+    factor: 0.75
+  min_size_factor: 0.25
+  daily_profit_lock:
+    enabled: true
+    lock_at_r: 3.0
+    giveback_pct: 50.0
+    min_peak_r: 1.0
+  max_stop_atr_mult: 4.0
+  min_stop_atr_mult: 0.3
+guardian:
+  daily_max_loss_pct: 2.0
+  max_trades_per_day: 12
+  max_trades_per_symbol_per_day: 4
+  max_concurrent_positions: 4
+  max_open_risk_pct: 4.0
+  min_size_fraction_under_cap: 0.5
+  max_spread_atr_frac: 0.25
+  spread_spike_mult: 2.5
+  consecutive_losses_lockout: 4
+  revenge_block_minutes: 30
+  symbol_cooldown_minutes: 5
+  max_trades_per_hour: 4
+  monday_open_block_minutes: 60
+  friday_close_block_hour_utc: 19
+  kill_switch: false
+  refuse_live_on_fallback: true
+sessions:
+  asia:
+    tz: Asia/Tokyo
+    start: 08:00
+    end: '15:00'
+  london:
+    tz: Europe/London
+    start: 07:00
+    end: '16:00'
+  newyork:
+    tz: America/New_York
+    start: 08:00
+    end: '17:00'
+  london_open:
+    tz: Europe/London
+    start: 07:00
+    end: '10:00'
+  ny_open:
+    tz: America/New_York
+    start: 08:20
+    end: '11:00'
+  overlap:
+    tz: America/New_York
+    start: 08:00
+    end: '11:30'
+  asia_range:
+    tz: Asia/Tokyo
+    start: 09:00
+    end: '15:00'
+  orb_london:
+    tz: Europe/London
+    start: 08:00
+  orb_ny:
+    tz: America/New_York
+    start: 09:30
+  rollover:
+    tz: America/New_York
+    start: '16:55'
+    end: '17:10'
+trade_manager:
+  rules:
+    friday_close:
+      enabled: true
+      priority: 1
+      hour_utc: 20
+      minute: 30
+    news_ahead:
+      enabled: true
+      priority: 2
+      minutes: 10
+      min_r_to_hold: 1.0
+    end_of_day:
+      enabled: true
+      priority: 3
+      minutes_before_rollover: 20
+    end_of_session:
+      enabled: false
+      priority: 4
+    ltf_choch:
+      enabled: true
+      priority: 5
+      timeframe: M5
+      partial: 1.0
+    htf_shift:
+      enabled: true
+      priority: 6
+      timeframe: H1
+    opposing_rejection:
+      enabled: true
+      priority: 7
+      min_grade: A
+      partial: 0.5
+    momentum_fade:
+      enabled: true
+      priority: 8
+      bars: 6
+      partial: 0.5
+    cvd_divergence:
+      enabled: true
+      priority: 9
+      partial: 0.5
+    vwap_band_rejection:
+      enabled: true
+      priority: 10
+      partial: 0.5
+    dxy_shock:
+      enabled: true
+      priority: 11
+    giveback:
+      enabled: true
+      priority: 12
+      min_mfe_r: 1.0
+      giveback_pct: 60.0
+    spread_spike:
+      enabled: true
+      priority: 13
+      mult: 3.0
+    volatility_spike:
+      enabled: true
+      priority: 14
+      atr_mult: 3.0
+  trail:
+    timeframe: M5
+    buffer_atr_mult: 0.2
+time_targets:
+  enabled: true
+  reaction_bars: 3
+  reaction_timeframe: M5
+  reaction_min_atr_move: 0.5
+  t1_r: 0.5
+  t1_mult: 2.0
+  t2_mult: 2.0
+  min_minutes: 5
+  min_minutes_by_tf:
+    M1: 10
+    M5: 20
+    M15: 45
+  max_minutes: 240
+  on_t1_miss: tighten
+  t1_tighten_to_r: -0.5
+  t1_partial: 0.5
+  on_t2_miss: close
+  session_pace:
+    asia: 0.6
+    london: 1.0
+    newyork: 1.0
+    overlap: 1.25
+    'off': 0.5
+execution:
+  deviation_points: 20
+  max_retries: 3
+  magic: 770077
+  avoid_first_seconds: 5
+  limit_validity_bars: 6
+  filling_preference:
+  - IOC
+  - FOK
+  - RETURN
+  slippage_points_backtest: 2
+news:
+  enabled: true
+  url: https://nfs.faireconomy.media/ff_calendar_thisweek.json
+  refresh_minutes: 60
+  minutes_before: 30
+  minutes_after: 30
+  impacts:
+  - High
+  manual_blackouts: []
+  on_unavailable: warn
+intel:
+  regime:
+    enabled: true
+  dom:
+    enabled: true
+    levels_atr_mult: 0.5
+  sentiment:
+    enabled: true
+    refresh_minutes: 30
+  cot:
+    enabled: true
+    refresh_hours: 24
+  macro:
+    enabled: true
+    refresh_hours: 12
+analyst:
+  min_sample: 15
+  max_weight_adjust: 15
+  disable_min_trades: 20
+  disable_expectancy_r: -0.15
+  probation_hours: 48
+  seasonality_shrinkage: 20
+  seasonality_cap: 5
+  target_trades_per_day: 3
+  frequency_warn_days: 5
+strategist:
+  auto_apply_paper: true
+  auto_apply_live: false
+  learn_min_trades: 15
+dashboard:
+  host: 0.0.0.0
+  port: 8787
+  session_hours: 12
+  login_max_attempts: 5
+  login_window_seconds: 300
+  refresh_seconds: 1.0
+backtest:
+  commission_per_lot: 7.0
+  default_spread_points:
+    XAUUSD: 25
+    default: 12
+  is_split: 0.7
+  walk_forward:
+    train_days: 20
+    test_days: 5
