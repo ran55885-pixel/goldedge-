@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AURUM NEXUS · Login</title>
+<link rel="icon" href="/static/img/logo.svg">
+<link rel="stylesheet" href="/static/css/hud.css">
+<style>
+  .wrap { min-height: 100vh; display: grid; place-items: center; padding: 16px; position: relative; z-index: 1; }
+  .card { width: min(420px, 100%); padding: 26px 24px; }
+  .logo { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .logo img { width: 96px; height: 96px; filter: drop-shadow(0 0 18px rgba(245, 197, 66, .6)); animation: bob 4s ease-in-out infinite; }
+  .logo .name { font-family: var(--head); font-weight: 900; letter-spacing: .3em; font-size: 22px;
+    background: linear-gradient(180deg, #fff3c4, #f5c542 55%, #b8860b); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  label { display: block; font-family: var(--head); font-size: 10px; letter-spacing: .16em; color: var(--dim); margin: 12px 0 4px; }
+  input { width: 100%; padding: 10px; font-size: 15px; }
+  .go { width: 100%; margin-top: 18px; padding: 12px; font-size: 12px; }
+  .err { color: var(--red); font-family: var(--mono); font-size: 13px; min-height: 18px; margin-top: 10px; }
+  .note { font-family: var(--mono); font-size: 11.5px; color: var(--dim); margin-top: 14px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="stars"></div>
+<div class="wrap">
+  <form class="panel card" id="f" autocomplete="on">
+    <div class="logo"><img src="/static/img/logo.svg" alt=""><div class="name">AURUM NEXUS</div>
+      <div class="mono dim" id="mode" style="font-size:12px">secure access</div></div>
+    <label for="u">USERNAME</label><input id="u" name="username" autocomplete="username" required>
+    <label for="p">PASSWORD</label><input id="p" name="password" type="password" autocomplete="current-password" required>
+    <div id="setupExtra" style="display:none">
+      <label for="p2">REPEAT PASSWORD</label><input id="p2" type="password" autocomplete="new-password">
+      <div id="codeBox"><label for="c">SETUP CODE (shown in the hub console)</label><input id="c" autocomplete="one-time-code"></div>
+    </div>
+    <button class="btn go" type="submit" id="go">LOG IN</button>
+    <div class="err" id="err"></div>
+    <div class="note" id="note">Pause / Kill and approvals require a login. Use the dashboard only on your own network or through Tailscale / Cloudflare Tunnel (HTTPS).</div>
+  </form>
+</div>
+<script>
+(async () => {
+  const $ = (i) => document.getElementById(i);
+  const st = await (await fetch("/api/auth/status")).json();
+  const setup = st.needs_setup;
+  if (setup) {
+    $("mode").textContent = "FIRST RUN · create the dashboard user";
+    $("setupExtra").style.display = "block";
+    $("p").autocomplete = "new-password";
+    $("go").textContent = "CREATE USER";
+    if (st.local) $("codeBox").style.display = "none";
+    $("note").textContent = "Username 3-32 letters/digits. Password at least 8 characters, stored only as a scrypt hash.";
+  } else if (st.user) { location.href = "/"; return; }
+  $("f").addEventListener("submit", async (e) => {
+    e.preventDefault(); $("err").textContent = "";
+    const body = { username: $("u").value.trim(), password: $("p").value };
+    if (setup) {
+      if ($("p").value !== $("p2").value) { $("err").textContent = "passwords do not match"; return; }
+      body.setup_code = $("c").value.trim();
+    }
+    const r = await fetch(setup ? "/api/setup" : "/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const j = await r.json();
+    if (j.ok) location.href = "/"; else $("err").textContent = j.error || "login failed";
+  });
+})();
+</script>
+</body>
+</html>

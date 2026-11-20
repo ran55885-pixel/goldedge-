@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff6cf"/><stop offset=".45" stop-color="#f5c542"/><stop offset="1" stop-color="#9a6b00"/>
+    </linearGradient>
+    <radialGradient id="core" cx="50%" cy="45%" r="55%">
+      <stop offset="0" stop-color="#0b2a5a"/><stop offset="1" stop-color="#02050d"/>
+    </radialGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <polygon points="64,6 114,35 114,93 64,122 14,93 14,35" fill="url(#core)" stroke="url(#gold)" stroke-width="5" filter="url(#glow)"/>
+  <polygon points="64,20 102,42 102,86 64,108 26,86 26,42" fill="none" stroke="#00e5ff" stroke-opacity=".55" stroke-width="1.5"/>
+  <path d="M40 92 L64 34 L88 92" fill="none" stroke="url(#gold)" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M50 74 H78" stroke="url(#gold)" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="64" cy="34" r="5" fill="#00e5ff" filter="url(#glow)"/>
+  <circle cx="40" cy="92" r="3.5" fill="#39ff14"/><circle cx="88" cy="92" r="3.5" fill="#ff3df2"/>
+</svg>

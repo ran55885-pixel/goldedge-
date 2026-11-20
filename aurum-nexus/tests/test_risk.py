@@ -120,3 +120,13 @@ def test_daily_profit_lock():
     locked, why = rm.profit_lock("P1", [2.0, -1.2])     # peak 2.0, now 0.8 -> gave back 60%
     assert locked and "gave back" in why
     assert rm.profit_lock("P1", [1.0, -0.2])[0] is False
+
+
+def test_tp1_rebased_after_slippage_keeps_floor():
+    from aurum_nexus.bots.risk import rebase_tp1
+    # planned entry 100, stop 99, TP1 101 (1R). Filled at 100.02 -> TP1 must move to 101.0402 (1R from fill)
+    assert rebase_tp1("long", 100.02, 99.0, 101.0, 1.0, 1.0) == pytest.approx(101.04)
+    assert rebase_tp1("short", 99.98, 101.0, 99.0, 1.0, 1.0) == pytest.approx(98.96)
+    assert rebase_tp1("long", 99.9, 99.0, 101.0, 1.0, 1.0) == 101.0      # better fill: TP1 never pulled closer
+    ok, rr, _ = rr_check("long", 100.02, 99.0, rebase_tp1("long", 100.02, 99.0, 101.0, 1.0, 1.0), 102.5, None, 1.0)
+    assert ok and rr["tp1"] >= 1.0 - 1e-9

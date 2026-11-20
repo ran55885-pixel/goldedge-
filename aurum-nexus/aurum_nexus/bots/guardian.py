@@ -29,6 +29,7 @@ class Guardian(Bot):
         self.risk = risk
         self.kill_switch = bool(self.g.get("kill_switch", False))
         self.lockouts: dict[str, str] = {}
+        self.lockout_day: dict[str, float] = {}
         self.vetoes: list[dict] = []
 
     def config_view(self) -> dict:
@@ -106,6 +107,10 @@ class Guardian(Bot):
             return veto("DXY breaking against the trade")
         if c.modifiers.get("setup_disabled"):
             return veto(f"setup {c.setup} temporarily disabled by Analyst (probation)")
+        day = self.book.day_start(now)
+        if self.lockout_day.get(acc) is not None and self.lockout_day[acc] != day:
+            self.lockouts.pop(acc, None)           # day lockouts expire at the next broker day
+            self.lockout_day.pop(acc, None)
         if acc in self.lockouts:
             return veto(self.lockouts[acc])
         if is_weekend(now):
@@ -127,6 +132,7 @@ class Guardian(Bot):
             maxloss = float(lim.get("daily_max_loss_pct", g["daily_max_loss_pct"]))
             if dl <= -maxloss:
                 self.lockouts[acc] = f"daily max loss {dl:.2f}% <= -{maxloss}% - locked for the day"
+                self.lockout_day[acc] = day
                 self.log("BLOCKED", f"{acc}: {self.lockouts[acc]}")
                 return veto(self.lockouts[acc])
         # trade counts
@@ -149,6 +155,7 @@ class Guardian(Bot):
         cl = self.book.consecutive_losses(acc, day_start)
         if cl >= int(g["consecutive_losses_lockout"]):
             self.lockouts[acc] = f"{cl} consecutive losses - locked for the day"
+            self.lockout_day[acc] = day
             self.log("BLOCKED", f"{acc}: {self.lockouts[acc]}")
             return veto(self.lockouts[acc])
         # revenge block

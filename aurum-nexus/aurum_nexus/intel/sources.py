@@ -127,6 +127,12 @@ class IntelHub:
         self.dom: dict[str, dict] = {}
         self.errors: dict[str, str] = {}
         self._t: dict[str, float] = {}
+        self.tv_alerts: list[dict] = []
+
+    def add_tv_alert(self, symbol: str, direction: str, ts: float, message: str = "") -> None:
+        """TradingView webhook alert (extra input). Only ever a small bounded score note."""
+        self.tv_alerts = (self.tv_alerts + [{"symbol": symbol, "direction": direction, "ts": ts,
+                                             "message": message}])[-50:]
 
     def _due(self, key: str, seconds: float) -> bool:
         return self.clock() - self._t.get(key, 0) >= seconds
@@ -191,6 +197,11 @@ class IntelHub:
             elif se["long_pct"] <= 30:
                 pts += 1.5 * sign
                 notes.append(f"crowd {se['long_pct']:.0f}% long (contrarian)")
+        for a in reversed(self.tv_alerts):
+            if a["symbol"] == symbol and self.clock() - a["ts"] <= 900:
+                pts += 1.5 if a["direction"] == direction else -1.5
+                notes.append(f"TradingView alert {a['direction']}")
+                break
         dm = self.dom.get(symbol)
         if dm and self.clock() - dm["time"] < 30 and abs(dm["imbalance"]) >= 0.3:
             if np.sign(dm["imbalance"]) == sign:
@@ -201,4 +212,4 @@ class IntelHub:
     def snapshot(self) -> dict:
         return {"cot": self.cot or "n/a", "real_yield": self.real_yield or "n/a",
                 "nominal_yield": self.nominal_yield or "n/a", "sentiment": self.sentiment or "n/a",
-                "dom": self.dom or "n/a", "errors": self.errors}
+                "dom": self.dom or "n/a", "errors": self.errors, "tv_alerts": self.tv_alerts[-10:]}

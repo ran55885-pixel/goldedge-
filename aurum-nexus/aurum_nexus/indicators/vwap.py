@@ -22,6 +22,8 @@ def anchored(bars: pd.DataFrame, anchor_time: float) -> dict | None:
     if v.sum() <= 0:
         v = np.ones(len(seg))
         basis = "TWAP (no volume)"
+    else:
+        v = v + 1e-9   # bars without volume (e.g. live-quote-built bars) get negligible weight, never NaN
     cv = np.cumsum(v)
     cpv = np.cumsum(tp * v)
     cp2v = np.cumsum(tp * tp * v)

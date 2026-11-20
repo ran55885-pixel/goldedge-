@@ -140,3 +140,12 @@ def test_profit_lock_blocks():
     for i in range(3):
         add_trade(book, "EURUSD", r=1.1, open_ts=w.now - 9000 + i * 1000, close_ts=w.now - 8000 + i * 1000)
     assert "profit lock" in check(g, h, w)["reason"]
+
+
+def test_day_lockout_expires_next_broker_day():
+    cfg, g, h, w, book = setup(make_cfg({"guardian": {"max_trades_per_hour": 50, "symbol_cooldown_minutes": 0}}))
+    for i in range(4):
+        add_trade(book, "EURUSD", r=-1.0, exit_type="sl", open_ts=w.now - 20000 + i * 1000, close_ts=w.now - 19000 + i * 1000)
+    assert "consecutive losses" in check(g, h, w)["reason"]
+    w.now += 86400                     # next broker day (Thursday 10:00 UTC)
+    assert check(g, h, w)["allowed"]

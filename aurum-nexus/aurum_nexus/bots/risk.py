@@ -45,6 +45,17 @@ def loss_at_stop(lots: float, entry: float, stop: float, spec: SymbolSpec) -> fl
     return abs(entry - stop) / spec.tick_size * spec.tick_value * lots
 
 
+def rebase_tp1(direction: str, entry: float, stop: float, tp1: float, tp1_rr: float, min_rr: float) -> float:
+    """TP1 is a managed partial: re-derive it from the realistic/actual entry so spread or slippage can never
+    push it below the floor. Final TP and the opposing obstacle are NOT moved (they stay hard checks)."""
+    sign = 1 if direction == "long" else -1
+    risk = (entry - stop) * sign
+    if risk <= 0:
+        return tp1
+    want = entry + sign * max(tp1_rr, min_rr) * risk
+    return want if (want - tp1) * sign > 0 else tp1
+
+
 RR_EPS = 1e-6  # float tolerance: a target placed exactly at 1R must pass the 1R floor
 
 
@@ -137,6 +148,8 @@ class RiskManager(Bot):
             entry = c.entry + offset
         else:
             entry = ask if c.direction == "long" else bid
+        tp1 = rebase_tp1(c.direction, entry, stop, tp1, float(profile.get("targets", {}).get("tp1_rr", 1.0)),
+                         self.cfg.min_rr)
         ok, rr, why = rr_check(c.direction, entry, stop, tp1, tp2, obstacle, self.cfg.min_rr)
         if not ok:
             return None, f"SKIPPED {why}"

@@ -26,6 +26,7 @@ class PaperBroker(TradingAdapter):
         self.spec_fn = spec_fn
         self.clock = clock
         self.slippage_points = slippage_points
+        self.commission_per_lot = 0.0      # round-turn commission per lot, charged on close (backtests)
         self.magic = magic
         self.pos: dict[int, PositionInfo] = {}
         self.deal_log: list[DealInfo] = []
@@ -110,9 +111,11 @@ class PaperBroker(TradingAdapter):
             price = t.bid if p.side == "buy" else t.ask
         vol = min(float(volume), p.volume)
         pnl = self._pnl(p, price, vol)
-        self.balance += pnl
+        comm = self.commission_per_lot * vol
+        self.balance += pnl - comm
         self.deal_log.append(DealInfo(next(self._ids), 0, self.clock(), p.symbol, "sell" if p.side == "buy" else "buy",
-                                      "out", vol, price, pnl, magic=magic, position_id=p.ticket, comment=comment))
+                                      "out", vol, price, pnl, commission=-comm, magic=magic, position_id=p.ticket,
+                                      comment=comment))
         p.volume = round(p.volume - vol, 8)
         if p.volume <= 1e-9:
             del self.pos[p.ticket]

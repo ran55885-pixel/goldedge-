@@ -400,6 +400,7 @@ class Engine:
         stats = self.analyst.report.get("overall", {})
         return {
             "app": APP_NAME, "version": __version__, "now": now, "now_text": fmt_utc(now, True),
+            "min_score": self.cfg.min_score, "min_rr": self.cfg.min_rr,
             "uptime": now - self.started, "mode": self.cfg.mode, "cycles": self.cycles,
             "cycle_ms": round(self.last_cycle_ms, 1), "kill_switch": self.guardian.kill_switch,
             "symbols": self.symbols, "quotes": quotes, "source": {"kind": main.get("source"), "label": main.get("label"),

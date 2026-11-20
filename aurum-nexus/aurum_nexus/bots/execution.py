@@ -13,7 +13,7 @@ import math
 import time
 
 from aurum_nexus.bots.base import Bot
-from aurum_nexus.bots.risk import rr_check, step_decimals
+from aurum_nexus.bots.risk import rebase_tp1, rr_check, step_decimals
 from aurum_nexus.data.base import RET_INVALID_FILL, RETCODE_TEXT, RETRYABLE
 from aurum_nexus.logbus import fmt_r
 from aurum_nexus.models import TF_SECONDS
@@ -160,6 +160,8 @@ class Execution(Bot):
             return None
         # ---- re-check immediately before sending (price, spread, RR)
         entry = tick.ask if plan["direction"] == "long" else tick.bid
+        tp1_rr = float(profile.get("targets", {}).get("tp1_rr", 1.0)) if profile else 1.0
+        plan["tp1"] = rebase_tp1(plan["direction"], entry, plan["stop"], plan["tp1"], tp1_rr, self.cfg.min_rr)
         ok, rr, why = rr_check(plan["direction"], entry, plan["stop"], plan["tp1"], plan["tp2"], plan["obstacle"],
                                self.cfg.min_rr)
         if not ok:
@@ -207,6 +209,7 @@ class Execution(Bot):
                      "reasons": candidate.reasons, "size_factor": plan["size_factor"]},
         }
         # ---- post-fill RR check
+        t["tp1"] = plan["tp1"] = rebase_tp1(plan["direction"], fill, plan["stop"], plan["tp1"], tp1_rr, self.cfg.min_rr)
         ok2, rr2, why2 = rr_check(plan["direction"], fill, plan["stop"], plan["tp1"], plan["tp2"], plan["obstacle"],
                                   self.cfg.min_rr)
         self.book.add(t)
@@ -249,6 +252,9 @@ class Execution(Bot):
         full = vol >= float(t["volume_open"]) - 1e-9
         magic = int(handle.cfg.magic or self.ec["magic"])
         if t["mode"] == "paper":
+            slip_pts = float(getattr(trader, "slippage_points", 0.0) or 0.0)
+            if price_hint is not None and slip_pts and exit_type in ("sl", "trail", "breakeven") and spec:
+                price_hint -= (1 if t["direction"] == "long" else -1) * slip_pts * spec.point  # stops slip adversely
             res = trader.close_position(t["ticket"], vol, int(self.ec["deviation_points"]), magic, 2,
                                         reason[:31], price=price_hint)
         else:

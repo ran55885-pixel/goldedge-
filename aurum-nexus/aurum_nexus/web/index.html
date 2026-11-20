@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AURUM NEXUS</title>
+<link rel="icon" href="/static/img/logo.svg">
+<link rel="stylesheet" href="/static/css/hud.css">
+<script src="/static/vendor/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+<div class="stars"></div>
+<div class="app">
+  <header class="top">
+    <div class="brand"><img src="/static/img/logo.svg" alt=""><div><div class="name">AURUM NEXUS</div><div class="ver" id="ver"></div></div></div>
+    <span class="dot" id="statusDot" title="engine status"></span>
+    <div class="stat"><span class="k">UPTIME</span><span class="v" id="uptime">--</span></div>
+    <div class="stat"><span class="k">ACCOUNTS CONNECTED</span><span class="v" id="accConn">--</span></div>
+    <div class="stat"><span class="k">OPEN POSITIONS</span><span class="v" id="openPos">--</span></div>
+    <div class="stat"><span class="k">IN POSITION $</span><span class="v" id="inPos">--</span></div>
+    <div class="stat hide-m"><span class="k">UTC</span><span class="v" id="clock">--</span></div>
+    <span class="badge" id="srcBadge">source --</span>
+    <span class="badge" id="modeBadge">--</span>
+    <div class="spacer"></div>
+    <select id="accSel" title="account"></select>
+    <button class="btn" id="qrBtn" title="open on phone / LAN">PHONE</button>
+    <button class="btn" id="pauseAllBtn">PAUSE ALL</button>
+    <button class="btn kill" id="killBtn">KILL SWITCH</button>
+    <button class="btn small" id="logoutBtn" title="log out">⏻</button>
+  </header>
+  <div class="banner" id="banner"></div>
+  <nav class="nav">
+    <button data-view="floor" class="active">COMMAND</button>
+    <button data-view="accounts">ACCOUNTS &amp; POSITIONS</button>
+    <button data-view="strategy">STRATEGY &amp; ANALYST</button>
+  </nav>
+
+  <!-- ================= COMMAND VIEW ================= -->
+  <section class="view active" id="view-floor">
+    <div class="grid">
+      <div class="col left">
+        <div class="panel"><h3>CURRENT BALANCE <span class="sub" id="balLabel"></span></h3>
+          <div class="big" id="balance">--</div>
+          <div class="kv" style="margin-top:8px">
+            <span class="k">TOTAL PNL</span><span class="v" id="totalPnl">--</span>
+            <span class="k">UNREALIZED</span><span class="v" id="unreal">--</span>
+            <span class="k">TODAY REALIZED</span><span class="v" id="todayReal">--</span>
+            <span class="k">WIN RATE</span><span class="v" id="winRate">--</span>
+          </div>
+          <div class="dim mono" id="balNote" style="font-size:11px;margin-top:6px"></div>
+        </div>
+        <div class="panel"><h3>BALANCE HISTORY <span class="sub" id="eqLabel"></span></h3><div id="equity"></div>
+          <div class="empty" id="eqEmpty" style="display:none">NO DATA yet - equity snapshots are written every 10 s</div></div>
+        <div class="panel"><h3>EDGE / EXPECTANCY <span class="sub">closed trades</span></h3>
+          <div class="kv" id="edge"></div></div>
+        <div class="panel"><h3>ACTIVITY LOG <span class="sub" id="logCount"></span></h3><div class="log" id="log"></div></div>
+      </div>
+
+      <div class="col center">
+        <div class="panel">
+          <div class="floor-title">• THE TRADING FLOOR •</div>
+          <div class="chartbar">
+            <select id="symSel"></select>
+            <select id="tfSel"><option>M1</option><option selected>M5</option><option>M15</option><option>H1</option><option>H4</option><option>D1</option></select>
+            <div class="layers" id="layers"></div>
+          </div>
+          <div class="srcline"><span id="srcText">--</span><span id="diffText"></span><span id="ctxText"></span></div>
+          <div class="chartwrap"><div id="chart"></div><canvas id="overlay"></canvas><div class="panetag" id="volTag"></div></div>
+          <div class="cvdwrap"><div id="cvd"></div><div class="panetag">CVD (tick-volume estimate) · divergences ◆</div></div>
+        </div>
+        <div class="panel" id="floorDesks"><h3>THE TEAM <span class="sub">9 cooperating bots</span></h3>
+          <div class="desks" id="desks"></div></div>
+      </div>
+
+      <div class="col right">
+        <div class="panel"><h3>SETUP RANKING <span class="sub" id="slots"></span></h3><div class="scroll-x"><table class="tbl" id="ranking"></table></div></div>
+        <div class="panel"><h3>DAILY LEVELS <span class="sub" id="lvSym"></span></h3><div class="scroll-x"><table class="tbl" id="levels"></table></div></div>
+        <div class="panel"><h3>DXY <span class="sub" id="dxyLabel"></span></h3><div id="dxychart"></div><div id="dxyInfo" style="margin-top:6px"></div></div>
+        <div class="panel"><h3>TRADE MANAGER <span class="sub">rules · ETAs · early exits</span></h3><div id="tm"></div></div>
+        <div class="panel"><h3>MARKET CONTEXT</h3><div class="chips" id="ctxChips"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ACCOUNTS VIEW ================= -->
+  <section class="view" id="view-accounts">
+    <div class="panel" style="margin-bottom:12px"><h3>ALL ACCOUNTS <span class="sub">totals only within the same currency</span></h3><div id="totals"></div></div>
+    <div class="accgrid" id="accCards"></div>
+  </section>
+
+  <!-- ================= STRATEGY VIEW ================= -->
+  <section class="view" id="view-strategy">
+    <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
+      <div class="col"><div class="panel"><h3>STRATEGY PER SYMBOL <span class="sub">profiles · proposals · Apply</span></h3><div id="strategy"></div></div></div>
+      <div class="col">
+        <div class="panel"><h3>TRADES / DAY vs TARGET</h3><div id="freq"></div></div>
+        <div class="panel"><h3>SEASONALITY HEATMAP <span class="sub" id="heatSym"></span></h3><div id="heat"></div></div>
+        <div class="panel"><h3>ANALYST <span class="sub">per setup · session · exit type</span></h3><div id="analyst"></div></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="bottom" id="botTabs"></div>
+<div class="modal" id="modal"><div class="panel box"><button class="btn small close" id="modalClose">CLOSE</button><div id="modalBody"></div></div></div>
+<div class="toast" id="toast"></div>
+<script src="/static/js/util.js"></script>
+<script src="/static/js/chart.js"></script>
+<script src="/static/js/app.js"></script>
+</body>
+</html>
