@@ -374,36 +374,69 @@ def build_engine(cfg, simulate: bool = False, simulate_speed: float = 10.0):
     return Engine(cfg, feed, news=news, intel=intel)
 
 
+class Hub:
+    """A running hub: engine thread + uvicorn server thread. Used by `mt5sys run` and the desktop app."""
+
+    def __init__(self, cfg, simulate: bool = False, simulate_speed: float = 10.0):  # pragma: no cover - runtime
+        import uvicorn
+        self.cfg = cfg
+        self.engine = build_engine(cfg, simulate, simulate_speed)
+        self.app = create_app(self.engine, cfg)
+        self.auth: Auth = self.app.state.auth
+        self.port = int(cfg.get("dashboard.port"))
+        self.url_local = f"http://127.0.0.1:{self.port}/"
+        self.url_lan = f"http://{lan_ip()}:{self.port}/"
+        self._stop = threading.Event()
+        self.engine_thread = threading.Thread(target=self.engine.run_forever, args=(self._stop,), daemon=True,
+                                              name="engine")
+        self.server = uvicorn.Server(uvicorn.Config(self.app, host=cfg.get("dashboard.host"), port=self.port,
+                                                    log_level="warning"))
+        self.server_thread = threading.Thread(target=self.server.run, daemon=True, name="uvicorn")
+
+    def start(self) -> "Hub":
+        self.engine_thread.start()
+        self.server_thread.start()
+        for _ in range(100):
+            if self.server.started:
+                break
+            time.sleep(0.1)
+        return self
+
+    def launch_url(self) -> str:
+        return self.url_local + "auth/launch?t=" + self.auth.make_launch_token()
+
+    def banner(self, simulate: bool = False) -> None:
+        print(f"\n  {APP_NAME} v{__version__} - mode {self.cfg.mode.upper()}{' (SIMULATED DATA)' if simulate else ''}")
+        print(f"  Dashboard (this PC): {self.url_local}")
+        print(f"  Dashboard (LAN/phone): {self.url_lan}")
+        if self.auth.needs_setup:
+            print(f"  FIRST RUN: create the dashboard user. Setup code for other devices: {self.auth.setup_code}")
+        try:
+            import qrcode
+            qr = qrcode.QRCode(border=1)
+            qr.add_data(self.url_lan)
+            qr.print_ascii(invert=True)
+        except Exception:
+            pass
+
+    def stop(self) -> None:
+        self.server.should_exit = True
+        self._stop.set()
+        self.engine_thread.join(timeout=10)
+        self.server_thread.join(timeout=10)
+        self.engine.shutdown()
+
+
 def serve(cfg, simulate: bool = False, open_browser: bool = True, simulate_speed: float = 10.0) -> int:  # pragma: no cover
-    import uvicorn
-    engine = build_engine(cfg, simulate, simulate_speed)
-    app = create_app(engine, cfg)
-    auth: Auth = app.state.auth
-    stop = threading.Event()
-    th = threading.Thread(target=engine.run_forever, args=(stop,), daemon=True, name="engine")
-    th.start()
-    host, port = cfg.get("dashboard.host"), int(cfg.get("dashboard.port"))
-    url_local = f"http://127.0.0.1:{port}/"
-    url_lan = f"http://{lan_ip()}:{port}/"
-    print(f"\n  {APP_NAME} v{__version__} - mode {cfg.mode.upper()}{' (SIMULATED DATA)' if simulate else ''}")
-    print(f"  Dashboard (this PC): {url_local}")
-    print(f"  Dashboard (LAN/phone): {url_lan}")
-    if auth.needs_setup:
-        print(f"  FIRST RUN: create the dashboard user. Setup code for other devices: {auth.setup_code}")
-    try:
-        import qrcode
-        qr = qrcode.QRCode(border=1)
-        qr.add_data(url_lan)
-        qr.print_ascii(invert=True)
-    except Exception:
-        pass
+    hub = Hub(cfg, simulate, simulate_speed).start()
+    hub.banner(simulate)
     if open_browser:
-        threading.Timer(1.5, lambda: webbrowser.open(url_local + "auth/launch?t=" + auth.make_launch_token())).start()
-    app.state.launch_url = lambda: url_local + "auth/launch?t=" + auth.make_launch_token()
+        webbrowser.open(hub.launch_url())
     try:
-        uvicorn.run(app, host=host, port=port, log_level="warning")
+        while hub.server_thread.is_alive():
+            hub.server_thread.join(timeout=1.0)
+    except KeyboardInterrupt:
+        print("\n  stopping (state is persisted)...")
     finally:
-        stop.set()
-        th.join(timeout=10)
-        engine.shutdown()
+        hub.stop()
     return 0

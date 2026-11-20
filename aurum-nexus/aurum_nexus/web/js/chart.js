@@ -132,7 +132,7 @@ const Floor = (() => {
   const free = (y) => { if (usedY.some((u) => Math.abs(u - y) < 11)) return false; usedY.push(y); return true; };
   function hline(x1, x2, p, color, dash, label, alignRight) {
     const y = yOf(p); if (y == null) return;
-    if (y < -5 || y > overlay.clientHeight + 5) return;
+    if (y < -5 || y > overlay.parentElement.clientHeight + 5) return;
     if (label && !free(y)) label = "";
     g.strokeStyle = color; g.setLineDash(dash || []); g.lineWidth = 1;
     g.beginPath(); g.moveTo(x1, y + .5); g.lineTo(x2, y + .5); g.stroke(); g.setLineDash([]);
@@ -141,7 +141,8 @@ const Floor = (() => {
 
   function draw() {
     if (!overlay || !data) return;
-    const W = overlay.clientWidth, H = overlay.clientHeight, dpr = window.devicePixelRatio || 1;
+    // size from the wrapper (never from the canvas itself, whose attribute size would feed back)
+    const wrap = overlay.parentElement, W = wrap.clientWidth, H = wrap.clientHeight, dpr = window.devicePixelRatio || 1;
     if (overlay.width !== W * dpr || overlay.height !== H * dpr) { overlay.width = W * dpr; overlay.height = H * dpr; }
     g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H); usedY = [];
     const L = data.layers || {}, right = W - 62;

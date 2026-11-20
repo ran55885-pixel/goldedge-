@@ -22,7 +22,11 @@ import yaml
 MIN_RR_FLOOR = 1.0
 MIN_SCORE_FLOOR = 70.0
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+import sys as _sys
+
+# Frozen (PyInstaller) build: config/, data/ and .env live next to "Aurum Nexus.exe"
+PROJECT_ROOT = Path(_sys.executable).resolve().parent if getattr(_sys, "frozen", False) \
+    else Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG_DIR = PROJECT_ROOT / "config"
 
 DEFAULT_SYMBOLS = ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY"]

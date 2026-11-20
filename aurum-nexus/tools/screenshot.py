@@ -25,11 +25,13 @@ async def main(a):
         await page.wait_for_timeout(a.wait * 1000)
         await page.screenshot(path=str(out / "main_dashboard.png"))
         await page.screenshot(path=str(out / "main_dashboard_full.png"), full_page=True)
+        await page.add_style_tag(content=".top { position: static !important; } .bottom { display: none !important; }")   # sticky header off for element shots
         chart = page.locator(".col.center .panel").first
         await page.evaluate("document.querySelectorAll('#layers input').forEach(i => { if (!i.checked) i.click(); })")
         await page.wait_for_timeout(1500)
         await chart.screenshot(path=str(out / "chart_layers.png"))
         await page.locator(".col.right").screenshot(path=str(out / "ranking_levels_dxy.png"))
+        await page.add_style_tag(content=".bottom { display: flex !important; }")
         await page.locator(".desk").first.click()
         await page.wait_for_timeout(1500)
         await page.screenshot(path=str(out / "bot_details.png"))
