@@ -147,17 +147,23 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - desktop ru
             pass
 
     icon = tray(hub, open_dashboard, do_quit)
+    window_ok = False
     try:
         import webview  # type: ignore
         webview.create_window(APP_NAME, hub.launch_url(), width=1440, height=900, min_size=(390, 600),
                               background_color="#02050d")
-        # closing the window hides to tray when the tray exists; otherwise it quits
-        webview.start(icon=str(asset("icon.png")))
-        if icon is None:
-            quit_evt.set()
+        webview.start(icon=str(asset("icon.png")))   # blocks until the window is closed
+        window_ok = True
     except Exception:
-        open_dashboard()
-    quit_evt.wait() if icon is not None else None
+        open_dashboard()                               # Edge/Chrome --app window, or the default browser
+    try:
+        if icon is not None:
+            quit_evt.wait()                            # keep running in the tray until "Quit"
+        elif not window_ok:
+            while hub.server_thread.is_alive():        # no window, no tray: serve until Ctrl+C
+                hub.server_thread.join(timeout=1.0)
+    except KeyboardInterrupt:
+        pass
     if icon is not None:
         icon.stop()
     hub.stop()

@@ -1,0 +1,75 @@
+name: Build Aurum Nexus (Windows installer)
+
+on:
+  push:
+    branches: [ccr-f194141c-wobjag, main]
+    paths: ["aurum-nexus/**", ".github/workflows/build-windows.yml"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: aurum-nexus
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies (incl. MetaTrader5, pywebview, pystray, PyInstaller)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Tests on Windows
+        run: python -m pytest -q -p no:cacheprovider
+
+      - name: Icon
+        run: python tools/make_icon.py
+
+      - name: Build "Aurum Nexus.exe" (PyInstaller)
+        run: pyinstaller --noconfirm --distpath build/out/dist --workpath build/out/work build/aurum_nexus.spec
+
+      - name: Smoke test the exe (starts, answers on the dashboard port, stops)
+        shell: pwsh
+        run: |
+          $exe = Join-Path (Get-Location) "build/out/dist/Aurum Nexus/Aurum Nexus.exe"
+          Copy-Item -Recurse config "build/out/dist/Aurum Nexus/config"
+          $p = Start-Process -FilePath $exe -ArgumentList "--simulate" -PassThru -WorkingDirectory (Split-Path $exe)
+          $ok = $false
+          for ($i = 0; $i -lt 40; $i++) {
+            Start-Sleep -Seconds 3
+            try { $r = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8787/api/auth/status; if ($r.StatusCode -eq 200) { $ok = $true; break } } catch {}
+          }
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          if (-not $ok) { Write-Error "exe did not serve the dashboard"; exit 1 }
+          Remove-Item -Recurse -Force "build/out/dist/Aurum Nexus/config", "build/out/dist/Aurum Nexus/data" -ErrorAction SilentlyContinue
+          Write-Host "exe smoke test OK"
+
+      - name: Package files next to the exe
+        shell: pwsh
+        run: |
+          Copy-Item -Recurse config "build/out/dist/Aurum Nexus/config"
+          Copy-Item .env.example "build/out/dist/Aurum Nexus/.env.example"
+          Copy-Item README_he.md "build/out/dist/Aurum Nexus/README_he.md"
+
+      - name: Build installer (Inno Setup)
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" build\installer.iss
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: AurumNexusSetup
+          path: aurum-nexus/build/out/AurumNexusSetup.exe
+
+      - name: Upload portable folder
+        uses: actions/upload-artifact@v4
+        with:
+          name: AurumNexus-portable
+          path: aurum-nexus/build/out/dist/Aurum Nexus
