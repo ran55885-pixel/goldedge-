@@ -152,7 +152,9 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - desktop ru
         import webview  # type: ignore
         webview.create_window(APP_NAME, hub.launch_url(), width=1440, height=900, min_size=(390, 600),
                               background_color="#02050d")
-        webview.start(icon=str(asset("icon.png")))   # blocks until the window is closed
+        # WinForms needs a real .ico for the window icon (a PNG raises "Value does not fall within range: picture")
+        ico = asset("icon.ico") if os.name == "nt" else asset("icon.png")
+        webview.start(icon=str(ico))                 # blocks until the window is closed
         window_ok = True
     except Exception:
         open_dashboard()                               # Edge/Chrome --app window, or the default browser
