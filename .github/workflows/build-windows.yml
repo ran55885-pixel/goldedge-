@@ -6,6 +6,9 @@ on:
     paths: ["aurum-nexus/**", ".github/workflows/build-windows.yml"]
   workflow_dispatch:
 
+permissions:
+  contents: write   # needed to publish the installer as a GitHub Release
+
 jobs:
   build:
     runs-on: windows-latest
@@ -73,3 +76,12 @@ jobs:
         with:
           name: AurumNexus-portable
           path: aurum-nexus/build/out/dist/Aurum Nexus
+
+      - name: Publish installer as a Release (fixed download link, no login needed)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest-build --cleanup-tag --yes 2>$null
+          $global:LASTEXITCODE = 0
+          gh release create latest-build "build/out/AurumNexusSetup.exe" --repo "${{ github.repository }}" --target "${{ github.sha }}" --title "Aurum Nexus installer (build ${{ github.run_number }})" --notes "Windows installer for Aurum Nexus. Paper mode by default; no accounts or secrets included. Built and smoke-tested on a Windows runner. No profit promise."
