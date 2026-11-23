@@ -541,19 +541,32 @@ class SignalBot(Bot):
                 entry_type = "market"
         else:
             entry_type = "market"
-        # --- stop: structure anchor + ATR buffer
+        # --- stop
         st = profile["stops"]
-        stop = raw["anchor"] - sign * float(st["atr_buffer_mult"]) * atr
-        risk = (entry - stop) * sign
-        if risk <= 0:
-            self._skip(ctx, raw, "invalid stop (entry beyond anchor)")
-            return None
-        if risk < float(st["min_atr"]) * atr:
-            stop = entry - sign * float(st["min_atr"]) * atr
+        style = st.get("style", "atr")
+        spread_floor = float(st.get("min_spread_mult", 5.0)) * max(tick.spread, 0.0)
+        ref_atr = atr
+        if style == "atr":
+            # ATR stop on a slower timeframe so M1/M5 entries are not stopped by noise or spread
+            ref_tf = st.get("atr_tf", "M15")
+            ref_atr = ctx.atr(ref_tf) or atr
+            dist = max(float(st.get("atr_mult", 1.5)) * ref_atr, spread_floor)
+            stop = entry - sign * dist
+            risk = dist
+        else:
+            # structure anchor + ATR buffer
+            stop = raw["anchor"] - sign * float(st["atr_buffer_mult"]) * atr
             risk = (entry - stop) * sign
-        if risk > float(st["max_atr"]) * atr:
-            self._skip(ctx, raw, f"stop too wide ({risk / atr:.1f}xATR > {st['max_atr']})")
-            return None
+            if risk <= 0:
+                self._skip(ctx, raw, "invalid stop (entry beyond anchor)")
+                return None
+            floor = max(float(st["min_atr"]) * atr, spread_floor)
+            if risk < floor:
+                stop = entry - sign * floor
+                risk = floor
+            if risk > float(st["max_atr"]) * atr:
+                self._skip(ctx, raw, f"stop too wide ({risk / atr:.1f}xATR > {st['max_atr']})")
+                return None
         # --- obstacle & targets (never stretch TP beyond the real obstacle)
         tg = profile["targets"]
         tp1_rr = max(float(tg["tp1_rr"]), min_rr)
@@ -614,8 +627,8 @@ class SignalBot(Bot):
             comps["proximity"] = max(0.0, 1.0 - abs(entry - edge) / atr)
         else:
             comps["proximity"] = 0.5
-        r_atr = risk / atr
-        # stop is always structure-anchored here; quality depends on its size in ATR (0.8..2.0 ideal)
+        r_atr = risk / ref_atr
+        # stop quality depends on its size in ATR of the stop timeframe (0.8..2.0 ideal)
         if 0.8 <= r_atr <= 2.0:
             sq = 1.0
         elif r_atr < 0.8:

@@ -161,7 +161,10 @@ playbooks:
     - M5
     - M15
 stops:
-  style: structure
+  style: atr
+  atr_tf: M15
+  atr_mult: 1.5
+  min_spread_mult: 5.0
   atr_buffer_mult: 0.25
   min_atr: 0.4
   max_atr: 3.0

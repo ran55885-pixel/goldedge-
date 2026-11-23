@@ -28,6 +28,8 @@ FORBIDDEN_KEYS = {"min_rr", "min_score", "guardian", "risk", "kill_switch", "max
                   "daily_max_loss_pct", "refuse_live_on_fallback"}
 
 BOUNDS = {
+    "stops.atr_mult": (0.8, 4.0),
+    "stops.min_spread_mult": (3.0, 15),
     "stops.atr_buffer_mult": (0.1, 0.8),
     "stops.min_atr": (0.2, 1.0),
     "stops.max_atr": (1.5, 5.0),
@@ -74,7 +76,10 @@ def default_profile(symbol: str) -> dict:
             "second_leg": _pb(timeframes=["M1", "M5"]),
             "asia_range_reversion": _pb(enabled=False, weight=0.8, sessions=["asia"], timeframes=["M5", "M15"]),
         },
-        "stops": {"style": "structure", "atr_buffer_mult": 0.25, "min_atr": 0.4, "max_atr": 3.0},
+        # ATR stop (default): stop = entry -/+ atr_mult x ATR(atr_tf), never closer than min_spread_mult x spread.
+        # "structure" (anchor + ATR buffer) remains available per profile.
+        "stops": {"style": "atr", "atr_tf": "M15", "atr_mult": 1.5, "min_spread_mult": 5.0,
+                  "atr_buffer_mult": 0.25, "min_atr": 0.4, "max_atr": 3.0},
         "targets": {"tp1_rr": 1.0, "tp1_fraction": 0.5, "tp2_fraction": 0.3, "tp2_rr_default": 2.0,
                     "trail": "m5_structure"},
         "time_targets": {"reaction_bars": 3, "t1_mult": 2.0, "t2_mult": 2.0},
@@ -199,6 +204,12 @@ class Strategist(Bot):
                 with open(path, encoding="utf-8") as f:
                     loaded = yaml.safe_load(f) or {}
                 prof = _merge(prof, loaded)
+                if "atr_tf" not in (loaded.get("stops") or {}):
+                    # profile written before the ATR stop model: migrate to the new default stop
+                    prof["stops"] = copy.deepcopy(default_profile(s)["stops"])
+                    self.log("STRATEGY", f"{s} profile: stop model migrated to ATR "
+                             f"({prof['stops']['atr_mult']} x ATR {prof['stops']['atr_tf']}, "
+                             f">= {prof['stops']['min_spread_mult']} x spread)", s)
             prof, warns = clamp_profile(prof, self.cfg.min_rr)
             for w in warns:
                 self.log("STRATEGY", f"{s} profile: {w}", s)
