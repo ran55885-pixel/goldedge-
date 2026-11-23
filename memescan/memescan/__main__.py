@@ -3,6 +3,8 @@
   python -m memescan scan     one scan, print the ranked candidates
   python -m memescan run      scan forever + paper trade + alerts
   python -m memescan stats    paper trading results
+  python -m memescan launch   live radar for brand-new pump.fun coins + paper trading
+  python -m memescan stats --launch
 """
 from __future__ import annotations
 
@@ -116,8 +118,22 @@ def cmd_run(cfg, args):
         time.sleep(max(5, cfg["interval_seconds"] - (time.time() - t0)))
 
 
+def cmd_launch(cfg, args):
+    import asyncio
+
+    from .launch import run_launch
+    try:
+        asyncio.run(run_launch(cfg, args.minutes * 60 if args.minutes else None))
+    except KeyboardInterrupt:
+        pass
+
+
 def cmd_stats(cfg, args):
-    trader = PaperTrader(cfg["paper"])
+    if args.launch:
+        from .paper import DATA_DIR
+        trader = PaperTrader(cfg["launch"]["paper"], os.path.join(DATA_DIR, "launch"))
+    else:
+        trader = PaperTrader(cfg["paper"])
     prices = {}
     if trader.positions:
         client = Client()
@@ -143,10 +159,13 @@ def main():
     s.add_argument("--top", type=int, default=25)
     s.add_argument("-v", "--verbose", action="store_true")
     sub.add_parser("run")
-    sub.add_parser("stats")
+    st = sub.add_parser("stats")
+    st.add_argument("--launch", action="store_true", help="results of launch mode")
+    la = sub.add_parser("launch")
+    la.add_argument("--minutes", type=float, default=0, help="stop after N minutes (0 = forever)")
     args = ap.parse_args()
     cfg = load_cfg(args.config)
-    {"scan": cmd_scan, "run": cmd_run, "stats": cmd_stats}[args.cmd](cfg, args)
+    {"scan": cmd_scan, "run": cmd_run, "stats": cmd_stats, "launch": cmd_launch}[args.cmd](cfg, args)
 
 
 if __name__ == "__main__":

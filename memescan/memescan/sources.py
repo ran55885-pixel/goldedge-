@@ -36,6 +36,8 @@ class Pair:
     volume: dict = field(default_factory=dict)        # m5,h1,h6,h24
     price_change: dict = field(default_factory=dict)  # m5,h1,h6,h24 (%)
     txns: dict = field(default_factory=dict)          # {"h1": {"buys":..,"sells":..}}
+    price_native: float = 0.0                         # price in the quote token (SOL for pump.fun)
+    quote_symbol: str = ""
 
     def buys(self, w: str) -> int:
         return int(self.txns.get(w, {}).get("buys", 0))
@@ -120,5 +122,7 @@ class Client:
                     volume={k: float(v or 0) for k, v in (p.get("volume") or {}).items()},
                     price_change={k: float(v or 0) for k, v in (p.get("priceChange") or {}).items()},
                     txns=p.get("txns") or {},
+                    price_native=float(p.get("priceNative") or 0),
+                    quote_symbol=(p.get("quoteToken") or {}).get("symbol", ""),
                 )
         return best

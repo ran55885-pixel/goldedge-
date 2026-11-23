@@ -86,7 +86,7 @@ class PaperTrader:
     def enter(self, pair, score: float, now: float | None = None) -> Position | None:
         if self.can_enter(pair.token) or pair.price_usd <= 0:
             return None
-        now = now or time.time()
+        now = time.time() if now is None else now
         size = self.cfg["position_size_usd"]
         fill = pair.price_usd * (1 + self.cfg["slippage_pct"] / 100)
         pos = Position(pair.chain, pair.token, pair.symbol, pair.url, fill, pair.liquidity_usd,
@@ -127,7 +127,7 @@ class PaperTrader:
         pos = self.positions.get(token)
         if not pos or price <= 0:
             return []
-        c, now = self.cfg, now or time.time()
+        c, now = self.cfg, (time.time() if now is None else now)
         pos.peak_price = max(pos.peak_price, price)
         change = (price / pos.entry_price - 1) * 100
         events = []
@@ -146,6 +146,14 @@ class PaperTrader:
                 events.append(self._sell(pos, 1.0, price, "EXIT time limit", now))
         self.save()
         return events
+
+    def force_exit(self, token: str, price: float, reason: str, now: float | None = None) -> list[dict]:
+        pos = self.positions.get(token)
+        if not pos or price <= 0:
+            return []
+        ev = [self._sell(pos, 1.0, price, reason, time.time() if now is None else now)]
+        self.save()
+        return ev
 
     # ---------- reporting ----------
     def stats(self, prices: dict[str, float] | None = None) -> dict:
