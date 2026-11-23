@@ -19,6 +19,12 @@ from aurum_nexus import APP_NAME
 from aurum_nexus.config import PROJECT_ROOT, load_config
 
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+# "Aurum Nexus.exe download-history ..." etc. run the command-line tool instead of the desktop app
+CLI_COMMANDS = {"check", "backtest", "optimize", "download-history"}
+
+
+def cli_passthrough(args: list[str]) -> bool:
+    return bool(args) and args[0] in CLI_COMMANDS
 
 
 def asset(name: str) -> Path:
@@ -122,6 +128,9 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - desktop ru
     from aurum_nexus.cli import confirm_live
     from aurum_nexus.hub.server import Hub
     args = argv if argv is not None else sys.argv[1:]
+    if cli_passthrough(args):
+        from aurum_nexus.cli import main as cli_main
+        return cli_main(args)
     cfg = load_config(PROJECT_ROOT / "config")
     cfg.live_confirmed = confirm_live(cfg, "--yes-live" in args)
     simulate = "--simulate" in args

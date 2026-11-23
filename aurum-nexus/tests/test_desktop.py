@@ -17,3 +17,9 @@ def test_autostart_noop_off_windows():
     if app.os.name != "nt":
         assert app.autostart_enabled() is False
         app.set_autostart(True)   # must not raise
+
+
+def test_cli_passthrough():
+    assert app.cli_passthrough(["download-history", "--source", "mt5"])
+    assert app.cli_passthrough(["backtest"])
+    assert not app.cli_passthrough([]) and not app.cli_passthrough(["--simulate"])

@@ -51,6 +51,9 @@ jobs:
           if (-not $ok) { Write-Error "exe did not serve the dashboard"; exit 1 }
           Remove-Item -Recurse -Force "build/out/dist/Aurum Nexus/config", "build/out/dist/Aurum Nexus/data" -ErrorAction SilentlyContinue
           Write-Host "exe smoke test OK"
+          & $exe download-history --help
+          if ($LASTEXITCODE -ne 0) { Write-Error "CLI passthrough failed"; exit 1 }
+          Write-Host "CLI passthrough OK"
 
       - name: Package files next to the exe
         shell: pwsh
