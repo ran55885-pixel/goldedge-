@@ -1,0 +1,47 @@
+# ===== MemeScan configuration =====
+chains: [solana, base]        # which chains to scan
+interval_seconds: 60          # how often to run a scan cycle
+
+# --- Hard filters: a token that fails any of these is skipped ---
+filters:
+  min_liquidity_usd: 15000    # thin pools are easy to rug and impossible to exit
+  min_fdv_usd: 20000
+  max_fdv_usd: 5000000        # above this, room for x10-x100 is small
+  min_age_minutes: 10         # let the first sniper wave settle
+  max_age_hours: 48
+  min_volume_h1_usd: 20000
+  min_txns_h1: 150
+  min_buy_ratio_h1: 0.52      # share of buys out of all h1 transactions
+  min_price_change_h1: 5      # must be going UP in the last hour
+  min_price_change_m5: -10    # and not dumping right now
+  max_price_change_h1: 800    # already up 8x in an hour = chasing the top
+
+# --- Safety (anti-rug) ---
+safety:
+  solana_max_rugcheck_score: 40   # RugCheck normalised score; lower is safer
+  solana_block_danger_risks: true # any "danger" risk from RugCheck = skip
+  base_max_tax_pct: 10            # buy/sell tax on Base
+  fail_if_unknown: true           # no safety data yet = skip
+
+# --- Scoring: 0-100. Entry only at or above this score ---
+entry_min_score: 65
+
+# --- Paper trading (simulated, no real money) ---
+paper:
+  enabled: true
+  starting_balance_usd: 1000
+  position_size_usd: 25
+  max_open_positions: 8
+  max_entries_per_day: 15
+  slippage_pct: 4             # simulated cost on entry and exit
+  stop_loss_pct: 30           # exit everything at -30%
+  take_profit_pct: 100        # at +100% (2x) sell part of the position
+  take_profit_sell_fraction: 0.5   # ...this share; the rest rides for free
+  trailing_stop_pct: 35       # after the TP, exit the rest if it falls 35% from its peak
+  max_hold_hours: 12
+  rug_liquidity_drop_pct: 60  # liquidity fell 60%+ from entry = treat as rug, exit
+
+# --- Telegram alerts (optional). Set these as environment variables instead of here:
+#     MEMESCAN_TG_TOKEN and MEMESCAN_TG_CHAT_ID
+telegram:
+  enabled: false
