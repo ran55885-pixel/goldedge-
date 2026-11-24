@@ -3,14 +3,15 @@
 Question it answers: at which hours do M5 breakouts run to 1.4R-2.0R, and at which hours are they fakes?
 
 Method (strategy-agnostic, no prediction, no moving averages):
-  * Breakout: an M5 bar CLOSES above the highest high (long) / below the lowest low (short) of the previous
-    --lookback M5 bars (default 12 = the last hour). Same-direction signals within --lookback bars are skipped.
+  * Breakout (default --mode structure): an M5 structure break of the system's own swing structure
+    (indicators/structure.py): a close beyond the last confirmed swing high/low = BOS (with trend) or CHoCH (against).
+    --mode range: a close beyond the highest high / lowest low of the previous --lookback M5 bars.
   * Entry at that close, paying the bar's spread (long buys at ask). 1R = max(--atr-mult x ATR14 on M15,
     --min-spread-mult x spread) - the same ATR stop model as the live system.
   * Path walked on M1 bars for --horizon minutes, bid/ask aware. If stop and a level are touched inside the same
     M1 bar, the stop is counted first (conservative). MFE = best excursion in R before the stop.
   * strong = reached >= 1.4R before the stop; very strong = >= 2.0R.
-    fake = stopped out after less than 0.5R; back-inside = an M5 close back through the broken level within 15 min.
+    fake = stopped out after less than 0.5R; back-inside = an M5 close back through the broken swing/level within 15 min.
 Hours are shown in Israel time (Asia/Jerusalem) and UTC.
 
 usage: python tools/breakout_hours.py XAUUSD.csv [--out DIR] [--point 0.01]
@@ -27,6 +28,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from aurum_nexus.backtest.csvio import read_m1_csv  # noqa: E402
 from aurum_nexus.indicators.atr import atr  # noqa: E402
+from aurum_nexus.indicators.structure import analyze  # noqa: E402
 
 TZ = "Asia/Jerusalem"
 
@@ -39,7 +41,7 @@ def resample(m1: pd.DataFrame, minutes: int) -> pd.DataFrame:
 
 
 def signals(m1: pd.DataFrame, lookback: int, atr_mult: float, min_spread_mult: float, point: float,
-            horizon: int) -> pd.DataFrame:
+            horizon: int, mode: str = "structure", swing_k: int = 3) -> pd.DataFrame:
     m5 = resample(m1, 5)
     m15 = resample(m1, 15)
     m15["atr"] = atr(m15["high"].values, m15["low"].values, m15["close"].values, 14)
@@ -47,24 +49,31 @@ def signals(m1: pd.DataFrame, lookback: int, atr_mult: float, min_spread_mult: f
     m5["close_t"] = m5["time"] + 5 * 60
     m5 = pd.merge_asof(m5.sort_values("close_t"), m15[["avail", "atr"]].sort_values("avail"),
                        left_on="close_t", right_on="avail", direction="backward")
-    hh = m5["high"].shift(1).rolling(lookback).max().values
-    ll = m5["low"].shift(1).rolling(lookback).min().values
     c = m5["close"].values
+    cands = []                                                # (index, side, broken level, kind)
+    if mode == "structure":
+        st = analyze(m5[["time", "open", "high", "low", "close"]].reset_index(drop=True), k=swing_k)
+        for ev in st["events"]:
+            cands.append((ev.idx, 1 if ev.direction == "bull" else -1, ev.price, ev.kind))
+    else:
+        hh = m5["high"].shift(1).rolling(lookback).max().values
+        ll = m5["low"].shift(1).rolling(lookback).min().values
+        last = {1: -10 ** 9, -1: -10 ** 9}
+        for i in range(lookback + 1, len(m5)):
+            side = 1 if c[i] > hh[i] else (-1 if c[i] < ll[i] else 0)
+            if side == 0 or i - last[side] <= lookback:
+                continue
+            last[side] = i
+            cands.append((i, side, hh[i] if side == 1 else ll[i], "range"))
     t1 = m1["time"].values
     h1, l1, c1 = m1["high"].values, m1["low"].values, m1["close"].values
     sp1 = m1["spread"].values * point
     rows = []
-    last = {1: -10 ** 9, -1: -10 ** 9}
-    for i in range(lookback + 1, len(m5)):
+    for i, side, level, kind in cands:
         a = m5["atr"].iat[i]
         if not np.isfinite(a) or a <= 0:
             continue
-        side = 1 if c[i] > hh[i] else (-1 if c[i] < ll[i] else 0)
-        if side == 0 or i - last[side] <= lookback:
-            continue
-        last[side] = i
         spread = m5["spread"].iat[i] * point
-        level = hh[i] if side == 1 else ll[i]
         entry = c[i] + spread if side == 1 else c[i]
         risk = max(atr_mult * a, min_spread_mult * spread)
         start = np.searchsorted(t1, m5["close_t"].iat[i])
@@ -84,7 +93,7 @@ def signals(m1: pd.DataFrame, lookback: int, atr_mult: float, min_spread_mult: f
         # back inside: an M5 close back through the broken level within 15 minutes (3 M5 bars)
         nxt = c[i + 1:i + 4]
         back = bool(np.any(nxt < level)) if side == 1 else bool(np.any(nxt > level))
-        rows.append({"time": int(m5["close_t"].iat[i]), "side": "long" if side == 1 else "short",
+        rows.append({"time": int(m5["close_t"].iat[i]), "side": "long" if side == 1 else "short", "kind": kind,
                      "risk": risk, "mfe_r": mfe, "stopped": stop_at is not None,
                      "minutes_to_stop": int(stop_at + 1) if stop_at is not None else None, "back_inside": back})
     df = pd.DataFrame(rows)
@@ -118,7 +127,10 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("csv")
     ap.add_argument("--out", default="reports/breakout_hours")
-    ap.add_argument("--lookback", type=int, default=12)
+    ap.add_argument("--mode", choices=["structure", "range"], default="structure",
+                    help="structure = M5 BOS/CHoCH of the system's swing structure (default); range = N-bar high/low")
+    ap.add_argument("--swing-k", type=int, default=3, help="fractal swing strength (bars each side), as the system")
+    ap.add_argument("--lookback", type=int, default=12, help="range mode only")
     ap.add_argument("--atr-mult", type=float, default=1.5)
     ap.add_argument("--min-spread-mult", type=float, default=5.0)
     ap.add_argument("--horizon", type=int, default=240, help="minutes to follow each breakout")
@@ -127,7 +139,7 @@ def main() -> int:
     a = ap.parse_args()
     m1 = read_m1_csv(a.csv)
     src = next((ln[1:].strip() for ln in open(a.csv, encoding="utf-8") if ln.startswith("#")), "unknown source")
-    df = signals(m1, a.lookback, a.atr_mult, a.min_spread_mult, a.point, a.horizon)
+    df = signals(m1, a.lookback, a.atr_mult, a.min_spread_mult, a.point, a.horizon, a.mode, a.swing_k)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     if df.empty:
@@ -137,14 +149,22 @@ def main() -> int:
     t = by_hour(df)
     t["thin"] = t["signals"] < a.min_signals
     t.to_csv(out / "by_hour.csv")
+    kinds = {k: by_hour(g) for k, g in df.groupby("kind")} if a.mode == "structure" else {}
+    for k, tk in kinds.items():
+        tk.to_csv(out / f"by_hour_{k}.csv")
     d0, d1 = (pd.to_datetime(m1["time"].iloc[[0, -1]], unit="s", utc=True).dt.strftime("%Y-%m-%d")).tolist()
     tot = {"signals": len(df), "strong_1.4R_%": round(float(df["strong"].mean()) * 100, 1),
            "very_strong_2R_%": round(float(df["very_strong"].mean()) * 100, 1),
            "fake_%": round(float(df["fake"].mean()) * 100, 1), "back_inside_15m_%": round(float(df["back_inside"].mean()) * 100, 1)}
-    lines = [f"# M5 breakouts by hour - {Path(a.csv).stem}", "", f"Data: {src}, {d0} -> {d1}. "
-             f"Lookback {a.lookback} M5 bars, 1R = {a.atr_mult} x ATR14(M15) (min {a.min_spread_mult} x spread), "
+    lines = [f"# M5 breakouts by hour - {Path(a.csv).stem}", "", f"Data: {src}, {d0} -> {d1}. " +
+             (f"Signals: M5 structure BOS/CHoCH (swing k={a.swing_k}), " if a.mode == "structure" else f"Signals: {a.lookback}-bar range, ") +
+             f"1R = {a.atr_mult} x ATR14(M15) (min {a.min_spread_mult} x spread), "
              f"followed {a.horizon} min on M1, stop counted first when ambiguous.", "",
              f"All hours: {tot}", "", t.to_string()]
+    for k, tk in kinds.items():
+        g = df[df["kind"] == k]
+        lines += ["", f"## {k}: {len(g)} signals, strong {g['strong'].mean() * 100:.1f}%, fake {g['fake'].mean() * 100:.1f}%",
+                  tk.to_string()]
     (out / "report.md").write_text("\n".join(lines), encoding="utf-8")
     print("\n".join(lines))
     return 0
