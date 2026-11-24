@@ -84,6 +84,7 @@ def default_profile(symbol: str) -> dict:
                   "atr_buffer_mult": 0.25, "min_atr": 0.4, "max_atr": 3.0},
         # targets.mode: "rr" = TP1 at tp1_rr, TP2 at the next obstacle / tp2_rr_default;
         #               "liquidity" = TP1 at the next opposing liquidity pool, TP2 at the one after (liq_max_rr cap)
+        #               "liquidity_runner" = TP1 at tp1_rr, TP2 (runner) at the next liquidity beyond TP1
         "targets": {"mode": "rr", "tp1_rr": 1.0, "tp1_fraction": 0.5, "tp2_fraction": 0.3, "tp2_rr_default": 2.0,
                     "trail": "m5_structure", "liq_front_atr": 0.1, "liq_max_rr": 6.0},
         "time_targets": {"reaction_bars": 3, "t1_mult": 2.0, "t2_mult": 2.0},

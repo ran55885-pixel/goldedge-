@@ -623,6 +623,14 @@ class SignalBot(Bot):
                 tp2 = tp1
         else:
             tp2 = entry + sign * max(float(tg["tp2_rr_default"]), tp1_rr) * risk
+        if tg.get("mode") == "liquidity_runner":
+            # TP1 stays at tp1_rr (partial + breakeven); the runner (TP2) aims at the next liquidity beyond it
+            goals = self.liquidity_goals(ctx, tf, direction, entry, risk, atr, min_rr, tg)
+            for g, lab in goals:
+                if (g - tp1) * sign / risk >= 0.5:
+                    tp2 = g
+                    raw.setdefault("notes", []).append(f"runner target: {lab} liquidity")
+                    break
         if tg.get("mode") == "liquidity":
             # liquidity -> liquidity: aim at the next opposing liquidity pool (PDH/PDL, PWH/PWL, Asia high/low,
             # equal highs/lows, HTF swings), slightly in front of it; TP2 = the following pool.
