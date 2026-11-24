@@ -192,6 +192,7 @@ DEFAULTS: dict[str, Any] = {
         "limit_validity_bars": 6,
         "filling_preference": ["IOC", "FOK", "RETURN"],
         "slippage_points_backtest": 2,
+        "postfill_rr_close": False,       # True = close a fill whose RR dropped below min_rr (old behaviour)
     },
     "news": {
         "enabled": True,

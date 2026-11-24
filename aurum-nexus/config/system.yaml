@@ -328,6 +328,7 @@ time_targets:
 execution:
   deviation_points: 20
   max_retries: 3
+  postfill_rr_close: false   # true = close a fill whose RR fell below min_rr; false = keep the trade
   magic: 770077
   avoid_first_seconds: 5
   limit_validity_bars: 6

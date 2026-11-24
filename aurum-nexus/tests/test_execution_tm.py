@@ -75,8 +75,9 @@ def test_retries_filling_switch_and_slippage_on_terminal():
     assert ops[0] == 1 and ops[-1] == 0     # IOC declared -> invalid fill -> ... -> FOK accepted
 
 
-def test_post_fill_rr_check_closes():
+def test_post_fill_rr_check_closes_when_enabled():
     cfg, st, bus, book, w, ex, h, tm = exec_env()
+    cfg.data["execution"]["postfill_rr_close"] = True
     mock = MockAdapter(symbols=["EURUSD"], minutes=3000, seed=2)
     tk = mock.tick("EURUSD")
     mock.script = [(10009, 0.0008), (10009, 0.0)]  # huge slippage on entry, then the close
@@ -210,3 +211,14 @@ def test_small_slippage_keeps_single_target_trade():
     t = ex.open_market(plan_for(c), h, c, None, default_profile("EURUSD"), w.now)
     assert t is not None and t["tp2"] >= t["tp1"] - 1e-12
     assert not any("post-fill" in e["message"] for e in bus.recent())
+
+
+def test_post_fill_default_keeps_trade():
+    cfg, st, bus, book, w, ex, h, tm = exec_env()
+    mock = MockAdapter(symbols=["EURUSD"], minutes=3000, seed=2)
+    tk = mock.tick("EURUSD")
+    mock.script = [(10009, 0.0008)]          # big slippage: trade is still kept, stop unchanged
+    h.adapter, h.live = mock, True
+    c = make_candidate("EURUSD", entry=tk.ask, stop=tk.ask - 0.0020, tp1=tk.ask + 0.0020, tp2=tk.ask + 0.0025)
+    t = ex.open_market(plan_for(c), h, c, None, default_profile("EURUSD"), w.now)
+    assert t is not None and t["stop"] == c.stop and mock.positions()

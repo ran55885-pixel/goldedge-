@@ -231,9 +231,14 @@ class Execution(Bot):
                  f"risk {plan['risk_money']:.2f} ({candidate.setup} {candidate.timeframe} score {candidate.score:.0f})",
                  sym, {"trade_id": tid})
         if not ok2:
-            self.log("EARLY EXIT", f"post-fill check: {why2} - closing {sym} immediately", sym)
-            self.close(t, handle, 1.0, f"post-fill {why2}", "postfill", now)
-            return None
+            if self.cfg.get("execution.postfill_rr_close", False):
+                self.log("EARLY EXIT", f"post-fill check: {why2} - closing {sym} immediately", sym)
+                self.close(t, handle, 1.0, f"post-fill {why2}", "postfill", now)
+                return None
+            # default: never exit because of the fill price - keep the trade, stop stays, targets move with the fill
+            if (t["tp2"] - t["tp1"]) * sign < 0:
+                t["tp2"] = plan["tp2"] = t["tp1"]
+            self.log("RISK", f"post-fill {why2} - trade kept (stop unchanged, targets from the fill)", sym)
         return t
 
     # ------------------------------------------------------------------ close / modify
