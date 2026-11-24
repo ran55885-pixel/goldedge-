@@ -37,6 +37,8 @@ BOUNDS = {
     "targets.tp1_fraction": (0.25, 0.75),
     "targets.tp2_fraction": (0.0, 0.6),
     "targets.tp2_rr_default": (1.2, 4.0),
+    "targets.liq_max_rr": (2.0, 10.0),
+    "targets.liq_front_atr": (0.0, 0.5),
     "time_targets.reaction_bars": (2, 8),
     "time_targets.t1_mult": (1.0, 4.0),
     "time_targets.t2_mult": (1.0, 5.0),
@@ -80,8 +82,10 @@ def default_profile(symbol: str) -> dict:
         # "structure" (anchor + ATR buffer) remains available per profile.
         "stops": {"style": "atr", "atr_tf": "M15", "atr_mult": 1.5, "min_spread_mult": 5.0,
                   "atr_buffer_mult": 0.25, "min_atr": 0.4, "max_atr": 3.0},
-        "targets": {"tp1_rr": 1.0, "tp1_fraction": 0.5, "tp2_fraction": 0.3, "tp2_rr_default": 2.0,
-                    "trail": "m5_structure"},
+        # targets.mode: "rr" = TP1 at tp1_rr, TP2 at the next obstacle / tp2_rr_default;
+        #               "liquidity" = TP1 at the next opposing liquidity pool, TP2 at the one after (liq_max_rr cap)
+        "targets": {"mode": "rr", "tp1_rr": 1.0, "tp1_fraction": 0.5, "tp2_fraction": 0.3, "tp2_rr_default": 2.0,
+                    "trail": "m5_structure", "liq_front_atr": 0.1, "liq_max_rr": 6.0},
         "time_targets": {"reaction_bars": 3, "t1_mult": 2.0, "t2_mult": 2.0},
         "regime_preferences": {
             "trend": {"prefer": ["bos_retest", "second_leg", "fvg_ob", "orb"], "avoid": ["vwap_reversion", "wyckoff"]},

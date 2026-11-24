@@ -220,6 +220,24 @@ class SignalBot(Bot):
                 out.append(("low", st["last_low"].price, f"{t} swing low", 0.5))
         return out
 
+    def liquidity_goals(self, ctx, tf, direction, entry, risk, atr, min_rr, tg) -> list[tuple[float, str]]:
+        """Opposing liquidity pools in trade direction, nearest first, as (target price, label) within RR bounds."""
+        sign = 1 if direction == "long" else -1
+        want = "high" if direction == "long" else "low"
+        front = float(tg.get("liq_front_atr", 0.1)) * (atr or 0.0)
+        max_rr = float(tg.get("liq_max_rr", 6.0))
+        seen: dict[float, str] = {}
+        for side, lvl, label, _imp in self._liquidity_targets(ctx, tf):
+            if side == want and lvl is not None and (lvl - entry) * sign > 0:
+                seen.setdefault(round(float(lvl), 6), label)
+        out = []
+        for lvl, label in sorted(seen.items(), key=lambda kv: (kv[0] - entry) * sign):
+            g = lvl - sign * front
+            rr = (g - entry) * sign / risk if risk > 0 else 0.0
+            if min_rr - 1e-6 <= rr <= max_rr:
+                out.append((g, label))
+        return out
+
     def _s_sweep_reversal(self, ctx, tf, d, profile):
         out = []
         b = d.bars
@@ -596,6 +614,20 @@ class SignalBot(Bot):
                 tp2 = tp1
         else:
             tp2 = entry + sign * max(float(tg["tp2_rr_default"]), tp1_rr) * risk
+        if tg.get("mode") == "liquidity":
+            # liquidity -> liquidity: aim at the next opposing liquidity pool (PDH/PDL, PWH/PWL, Asia high/low,
+            # equal highs/lows, HTF swings), slightly in front of it; TP2 = the following pool.
+            goals = self.liquidity_goals(ctx, tf, direction, entry, risk, atr, min_rr, tg)
+            if not goals:
+                self._skip(ctx, raw, f"no opposing liquidity between {min_rr:.1f}R and {tg.get('liq_max_rr', 6.0)}R")
+                return None
+            tp1, lab1 = goals[0]
+            tp2 = tp1
+            for g, _lab in goals[1:]:
+                if (g - tp1) * sign / risk >= 0.5:
+                    tp2 = g
+                    break
+            raw.setdefault("notes", []).append(f"target: {lab1} liquidity")
         rr_tp1 = (tp1 - entry) * sign / risk
         rr_final = (tp2 - entry) * sign / risk
         if rr_tp1 < min_rr - 1e-6 or rr_final < min_rr - 1e-6:
