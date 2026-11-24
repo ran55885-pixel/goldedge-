@@ -50,8 +50,11 @@ telegram:
 # python -m memescan launch
 launch:
   watch_minutes: 20           # follow every new coin for this long after launch
-  poll_seconds: 12            # how often to refresh stats of watched coins
-  min_age_seconds: 60         # ignore the first minute (bots + snipers)
+  poll_seconds: 8             # how often to refresh stats of watched coins
+  min_age_seconds: 180        # live test: entries at ~1 min got dumped -86% by snipers. Wait 3 min.
+  confirm_polls: 2            # setup must hold on 2 polls in a row (no single-spike entries)
+  buzz_window_minutes: 60     # if `intel` is running: contract mentioned by independent sources...
+  buzz_bonus_per_source: 4    # ...adds this many points per source (max 3 sources)
   max_dev_buy_pct: 8          # dev bought more than 8% of supply at launch = dump risk
   min_mcap_multiple: 2.5      # market cap now vs at launch (x2.5 = +150%)
   min_mcap_usd: 7000
@@ -77,3 +80,37 @@ launch:
     trailing_stop_pct: 40
     max_hold_hours: 3
     rug_liquidity_drop_pct: 60
+
+# ===== INTEL: news, exchange listings, communities =====
+# python -m memescan intel            run forever (alerts + learning)
+# python -m memescan intel --sources  reliability table per source
+intel:
+  min_independent_sources: 2  # alert when one contract is called by N independent sources...
+  buzz_window_minutes: 60     # ...within this window
+  sources:
+    # Tier "exchange" (official, trust 1.0): new market on Binance/Coinbase/Upbit/Bithumb = the
+    # single most reliable pump catalyst. Detected by diffing each exchange's market list.
+    exchanges: {interval: 90}
+    binance_announcements: {interval: 120}
+    # Tier "news" (trust 0.85): established newsrooms with editors and corrections policies.
+    news_rss:
+      interval: 300
+      feeds:
+        CoinDesk: https://www.coindesk.com/arc/outboundfeeds/rss/
+        Cointelegraph: https://cointelegraph.com/rss
+        Decrypt: https://decrypt.co/feed
+        TheBlock: https://www.theblock.co/rss.xml
+        Blockworks: https://blockworks.co/feed
+        DLNews: https://www.dlnews.com/arc/outboundfeeds/rss/
+    # Tier "aggregator" (trust 0.6)
+    coingecko_trending: {interval: 600}
+    cryptopanic: {interval: 300}     # needs a free key: env MEMESCAN_CRYPTOPANIC_KEY
+    # Tier "community" (trust 0.3): early but noisy and often manipulated. Never treated as fact;
+    # each source earns or loses weight from the real price outcome of its calls.
+    reddit:
+      interval: 180
+      subreddits: [solana, CryptoMoonShots, memecoins, SatoshiStreetBets]
+    fourchan_biz: {interval: 180}
+    telegram_public:
+      interval: 180
+      channels: [binance_announcements]   # add PUBLIC channel usernames here (the part after t.me/)

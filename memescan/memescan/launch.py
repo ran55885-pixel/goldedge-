@@ -37,6 +37,8 @@ class Launch:
     buyers: set = field(default_factory=set)
     dev_sold: bool = False
     peak_multiple: float = 1.0
+    pass_streak: int = 0
+    buzz: int = 0
     signaled: bool = False
 
 
@@ -86,9 +88,18 @@ class LaunchTracker:
 
     # ---------- decision ----------
     def multiple(self, launch: Launch, p: Pair) -> float:
-        if p.quote_symbol.upper() not in ("SOL", "WSOL") or launch.launch_mcap_sol <= 0:
+        """Market cap now / market cap at launch, both in SOL. Uses DexScreener's FDV (real supply)
+        instead of assuming 1B tokens, which broke on coins from other launchpads."""
+        if p.quote_symbol.upper() not in ("SOL", "WSOL") or launch.launch_mcap_sol < 5 or p.price_native <= 0:
             return 0.0
-        return p.price_native * PUMP_SUPPLY / launch.launch_mcap_sol
+        sol_usd = p.price_usd / p.price_native
+        mult = p.fdv_usd / (launch.launch_mcap_sol * sol_usd)
+        return mult if 0 < mult < 10_000 else 0.0  # anything beyond is bad data
+
+    def confirm(self, launch: Launch, passed: bool) -> bool:
+        """Require the setup to hold for N polls in a row, so one spike doesn't trigger an entry."""
+        launch.pass_streak = launch.pass_streak + 1 if passed else 0
+        return launch.pass_streak >= self.cfg.get("confirm_polls", 2)
 
     def evaluate(self, launch: Launch, p: Pair) -> tuple[list[str], float, dict]:
         c = self.cfg
@@ -173,6 +184,10 @@ async def brain(cfg: dict, tracker: LaunchTracker, subscribe_q: asyncio.Queue):
     client, safety = Client(), Safety(cfg["safety"])
     trader = PaperTrader(lc["paper"], os.path.join(DATA_DIR, "launch"))
     note = Notifier(cfg.get("telegram", {}).get("enabled", False))
+    intel = None
+    if os.path.exists(os.path.join(DATA_DIR, "intel.db")):
+        from .intel.store import Store
+        intel = Store(os.path.join(DATA_DIR, "intel.db"))
     last_status = 0.0
 
     def say(msg: str):
@@ -207,7 +222,10 @@ async def brain(cfg: dict, tracker: LaunchTracker, subscribe_q: asyncio.Queue):
                 if not p:
                     continue
                 fails, s, _ = tracker.evaluate(launch, p)
-                if fails or s < lc["entry_min_score"]:
+                if intel is not None:
+                    launch.buzz = intel.buzz_count(mint, lc.get("buzz_window_minutes", 60))
+                    s = min(100.0, s + min(launch.buzz, 3) * lc.get("buzz_bonus_per_source", 4))
+                if not tracker.confirm(launch, not fails and s >= lc["entry_min_score"]):
                     continue
                 launch.signaled = True
                 if lc.get("require_rugcheck", True):
@@ -221,7 +239,8 @@ async def brain(cfg: dict, tracker: LaunchTracker, subscribe_q: asyncio.Queue):
                 say(f"{head} {launch.symbol} | score {s:.0f} | {age:.1f} min old | "
                     f"x{tracker.multiple(launch, p):.1f} from launch | mcap ${p.fdv_usd:,.0f}\n"
                     f"5m: {p.buys('m5')} buys / {p.sells('m5')} sells, {p.price_change.get('m5', 0):+.0f}% | "
-                    f"dev {launch.dev_buy_pct:.1f}%{' | GRADUATED' if launch.migrated else ''}\n{p.url}")
+                    f"dev {launch.dev_buy_pct:.1f}%{' | GRADUATED' if launch.migrated else ''}"
+                    f"{f' | mentioned by {launch.buzz} sources' if launch.buzz else ''}\n{p.url}")
 
             tracker.expire(now, keep=set(trader.positions))
             if now - last_status > 60:

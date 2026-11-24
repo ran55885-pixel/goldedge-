@@ -31,12 +31,28 @@ class TestLaunch(unittest.TestCase):
     def test_runner_signals(self):
         t = LaunchTracker(CFG)
         t.on_message(create(), now=0)
-        self.assertEqual(t.ready(30), [])        # too young
-        self.assertEqual(t.ready(90), ["M"])
+        self.assertEqual(t.ready(CFG["min_age_seconds"] - 1), [])        # too young
+        self.assertEqual(t.ready(CFG["min_age_seconds"] + 1), ["M"])
         fails, score, _ = t.evaluate(t.watch["M"], pair())
         self.assertEqual(fails, [])
         self.assertAlmostEqual(t.multiple(t.watch["M"], pair()), 5.0)
         self.assertGreaterEqual(score, CFG["entry_min_score"])
+
+    def test_confirmation_needs_consecutive_passes(self):
+        t = LaunchTracker(CFG)
+        t.on_message(create(), now=0)
+        launch = t.watch["M"]
+        self.assertFalse(t.confirm(launch, True))
+        self.assertFalse(t.confirm(launch, False))   # streak broken
+        self.assertFalse(t.confirm(launch, True))
+        self.assertTrue(t.confirm(launch, True))
+
+    def test_bad_data_gives_no_multiple(self):
+        t = LaunchTracker(CFG)
+        t.on_message(create(mcap_sol=0.001), now=0)   # garbage launch mcap (the x391,280,180 bug)
+        self.assertEqual(t.multiple(t.watch["M"], pair()), 0.0)
+        t.on_message(create(mint="N"), now=0)
+        self.assertEqual(t.multiple(t.watch["N"], pair(quote_symbol="USDC")), 0.0)
 
     def test_fat_dev_rejected(self):
         t = LaunchTracker(CFG)

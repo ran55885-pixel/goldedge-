@@ -5,6 +5,7 @@
   python -m memescan stats    paper trading results
   python -m memescan launch   live radar for brand-new pump.fun coins + paper trading
   python -m memescan stats --launch
+  python -m memescan intel    news + exchange listings + communities, with per-source reliability
 """
 from __future__ import annotations
 
@@ -128,6 +129,18 @@ def cmd_launch(cfg, args):
         pass
 
 
+def cmd_intel(cfg, args):
+    from .intel.engine import Intel, print_sources
+    intel = Intel(cfg)
+    if args.sources:
+        print_sources(intel.store)
+        return
+    try:
+        intel.run(once=args.once)
+    except KeyboardInterrupt:
+        pass
+
+
 def cmd_stats(cfg, args):
     if args.launch:
         from .paper import DATA_DIR
@@ -161,11 +174,14 @@ def main():
     sub.add_parser("run")
     st = sub.add_parser("stats")
     st.add_argument("--launch", action="store_true", help="results of launch mode")
+    it = sub.add_parser("intel")
+    it.add_argument("--once", action="store_true", help="one pass over all sources")
+    it.add_argument("--sources", action="store_true", help="reliability table per source")
     la = sub.add_parser("launch")
     la.add_argument("--minutes", type=float, default=0, help="stop after N minutes (0 = forever)")
     args = ap.parse_args()
     cfg = load_cfg(args.config)
-    {"scan": cmd_scan, "run": cmd_run, "stats": cmd_stats, "launch": cmd_launch}[args.cmd](cfg, args)
+    {"scan": cmd_scan, "run": cmd_run, "stats": cmd_stats, "launch": cmd_launch, "intel": cmd_intel}[args.cmd](cfg, args)
 
 
 if __name__ == "__main__":
