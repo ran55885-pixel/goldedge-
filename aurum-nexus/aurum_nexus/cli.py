@@ -184,6 +184,8 @@ def cmd_download(args) -> int:
             raise SystemExit("no MT5 account configured (use --account NAME)")
         paths = hd.download_mt5(acc, symbols, _ts(args.start), _ts(args.end) or time.time(), out,
                                 suffixes=cfg.get("symbols.suffix_candidates"))
+    elif args.source == "dukascopy":
+        paths = hd.download_dukascopy(symbols, _ts(args.start), _ts(args.end) or time.time(), out)
     elif args.source == "oanda":
         paths = hd.download_oanda(symbols, _ts(args.start), _ts(args.end) or time.time(), out)
     else:
@@ -234,7 +236,7 @@ def build_parser() -> argparse.ArgumentParser:
             b.add_argument("--no-register", action="store_true", help="do not create a dashboard proposal")
         b.set_defaults(fn=fn)
     d = sub.add_parser("download-history", help="download M1 history to CSV")
-    d.add_argument("--source", choices=["mt5", "oanda", "yahoo"], default="mt5")
+    d.add_argument("--source", choices=["mt5", "dukascopy", "oanda", "yahoo"], default="mt5")
     d.add_argument("--symbols")
     d.add_argument("--start", default="2024-01-01")
     d.add_argument("--end")
