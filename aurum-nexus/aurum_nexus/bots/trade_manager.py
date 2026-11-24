@@ -139,6 +139,8 @@ class TradeManager:
         # ---- early-exit rules by priority
         rules = sorted(((k, v) for k, v in self.tm["rules"].items() if v.get("enabled")), key=lambda kv: kv[1]["priority"])
         for name, rc in rules:
+            if name == "spread_spike" and not rc.get("allow_close", False):
+                continue          # never exit because of the spread unless explicitly allowed (allow_close: true)
             fn = getattr(self, f"_rule_{name}", None)
             if fn is None:
                 continue
