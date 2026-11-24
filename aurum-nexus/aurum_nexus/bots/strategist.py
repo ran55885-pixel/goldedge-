@@ -39,6 +39,8 @@ BOUNDS = {
     "targets.tp2_rr_default": (1.2, 4.0),
     "targets.liq_max_rr": (2.0, 10.0),
     "targets.liq_front_atr": (0.0, 0.5),
+    "targets.min_tp_pips": (0, 2000),
+    "targets.max_tp_pips": (0, 5000),
     "time_targets.reaction_bars": (2, 8),
     "time_targets.t1_mult": (1.0, 4.0),
     "time_targets.t2_mult": (1.0, 5.0),
@@ -87,7 +89,8 @@ def default_profile(symbol: str) -> dict:
         #               "liquidity" = TP1 at the next opposing liquidity pool, TP2 at the one after (liq_max_rr cap)
         #               "liquidity_runner" = TP1 at tp1_rr, TP2 (runner) at the next liquidity beyond TP1
         "targets": {"mode": "rr", "tp1_rr": 1.0, "tp1_fraction": 0.5, "tp2_fraction": 0.3, "tp2_rr_default": 2.0,
-                    "trail": "m5_structure", "liq_front_atr": 0.1, "liq_max_rr": 6.0},
+                    "trail": "m5_structure", "liq_front_atr": 0.1, "liq_max_rr": 6.0,
+                    "min_tp_pips": 0, "max_tp_pips": 0},   # e.g. gold 60 / 200 (1 pip = 0.10); 0 = off
         "time_targets": {"reaction_bars": 3, "t1_mult": 2.0, "t2_mult": 2.0},
         "regime_preferences": {
             "trend": {"prefer": ["bos_retest", "second_leg", "fvg_ob", "orb"], "avoid": ["vwap_reversion", "wyckoff"]},
@@ -111,6 +114,8 @@ def default_profile(symbol: str) -> dict:
         pb["orb"].update(weight=1.2)
         p["stops"].update(atr_buffer_mult=0.35, min_atr=0.5, max_atr=3.5)
         p["targets"]["tp2_rr_default"] = 2.2
+        if s == "XAUUSD":
+            p["targets"].update(min_tp_pips=60, max_tp_pips=200)   # 60-200 pips = $6-$20 per ounce
     elif s in ("EURUSD", "GBPUSD"):
         p["notes"] = f"{s}: London bos_retest focus, London/NY sessions"
         pb["bos_retest"].update(weight=1.25, sessions=["london_open", "london", "overlap"])

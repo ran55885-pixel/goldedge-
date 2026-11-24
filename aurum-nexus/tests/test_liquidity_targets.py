@@ -20,3 +20,9 @@ def test_short_goals():
     pools = [("low", 97.0, "Asia low", 0.7), ("low", 95.0, "PDL", 0.8), ("high", 105.0, "PDH", 0.8)]
     g = _bot(pools).liquidity_goals(None, "M5", "short", 100.0, 1.0, 1.0, 1.0, {"liq_front_atr": 0.0})
     assert [lab for _, lab in g] == ["Asia low", "PDL"]
+
+
+def test_gold_profile_targets_60_200_pips():
+    from aurum_nexus.bots.strategist import default_profile
+    t = default_profile("XAUUSD")["targets"]
+    assert t["min_tp_pips"] == 60 and t["max_tp_pips"] == 200

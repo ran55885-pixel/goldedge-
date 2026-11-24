@@ -24,6 +24,7 @@ from aurum_nexus.bots.strategist import REVERSAL_SETUPS
 from aurum_nexus.context import SymbolContext
 from aurum_nexus.dxy import dxy_modifier
 from aurum_nexus.indicators import candles, liquidity, structure
+from aurum_nexus.symbols import pip_size
 from aurum_nexus.models import TF_SECONDS, Candidate
 from aurum_nexus.timeutil import in_window, to_dt, window_bounds
 
@@ -693,6 +694,20 @@ class SignalBot(Bot):
                     tp2 = g
                     break
             raw.setdefault("notes", []).append(f"target: {lab1} liquidity")
+        # --- target size in pips (profile targets.min_tp_pips / max_tp_pips; 0 = off). Gold: 1 pip = 0.10
+        lo_p, hi_p = float(tg.get("min_tp_pips", 0) or 0), float(tg.get("max_tp_pips", 0) or 0)
+        if lo_p > 0 or hi_p > 0:
+            pip = pip_size(ctx.symbol)
+            lo_d, hi_d = lo_p * pip, (hi_p * pip if hi_p > 0 else float("inf"))
+            if obstacle is not None and (obstacle - entry) * sign < lo_d:
+                self._skip(ctx, raw, f"obstacle {abs(obstacle - entry) / pip:.0f} pips away < {lo_p:.0f} pip target")
+                return None
+            d1 = min(max((tp1 - entry) * sign, lo_d), hi_d)
+            d2 = min(max((tp2 - entry) * sign, d1), hi_d)
+            tp1, tp2 = entry + sign * d1, entry + sign * d2
+            if d2 / risk < min_rr - 1e-6:
+                self._skip(ctx, raw, f"{hi_p:.0f} pip target cap gives RR {d2 / risk:.2f} < {min_rr:.1f}")
+                return None
         rr_tp1 = (tp1 - entry) * sign / risk
         rr_final = (tp2 - entry) * sign / risk
         if rr_tp1 < min_rr - 1e-6 or rr_final < min_rr - 1e-6:
