@@ -1,6 +1,7 @@
 """SIGNAL - execution trader on M1, M5 and M15 simultaneously.
 
-Setups (playbooks): zone_reaction, sweep_reversal, bos_retest, fvg_ob, range_breakout, orb (London/NY
+Setups (playbooks): zone_reaction, sweep_reversal, bos_retest, fvg_ob, liq_ob_fvg (liquidity swept into an
+OB/FVG on live volume), range_breakout, orb (London/NY
 opening range 15/30m), vwap_reversion (±2σ fade), wyckoff (spring/upthrust), london_judas (Asian range
 sweep), ny_open_reversal, second_leg (pullback to M15 FVG after BOS), asia_range_reversion (opt-in for
 gold, default for JPY/AUD/NZD).
@@ -309,6 +310,53 @@ class SignalBot(Bot):
                                     "zone": (z.low, z.high), "zone_id": f"{z.kind}:{t}:{z.created}",
                                     "zone_quality": z.strength + (0.1 if t != tf else 0),
                                     "notes": [f"{t} {z.kind}"], "edge": z.low})
+        return out
+
+    def _s_liq_ob_fvg(self, ctx, tf, d, profile):
+        """Liquidity resting under (over) an HTF order block / FVG is swept INTO the zone and reclaimed, with live
+        volume: RVOL spike on the sweep (stops being taken) and the trigger candle's delta in the trade direction.
+        Needs a volume source (MT5 tick volume); without volume the setup is not produced."""
+        out = []
+        if not ctx.has_volume or d.rvol is None or d.delta is None or d.n < 25:
+            return out
+        b = d.bars
+        last = b.iloc[-1]
+        atr = d.atr
+        rv_min = float(profile.get("liq_ob_fvg", {}).get("rvol_min", 1.5))
+        rv_sweep = float(np.nan_to_num(np.max(d.rvol[-3:]), nan=0.0))
+        if rv_sweep < rv_min:
+            return out
+        lows3, highs3 = float(b["low"].iloc[-3:].min()), float(b["high"].iloc[-3:].max())
+        pools = self._liquidity_targets(ctx, tf)
+        for t in REF_TFS[tf]:
+            dd = ctx.tf.get(t)
+            if not dd:
+                continue
+            for z in dd.fvgs + dd.obs:
+                bull = z.kind in ("fvg_bull", "ob_bull")
+                if bull:
+                    # sell-side liquidity just under or inside the bullish zone
+                    liq = [(lvl, lab) for side, lvl, lab, _ in pools
+                           if side == "low" and z.low - 0.6 * atr <= lvl <= z.high]
+                    for lvl, lab in liq:
+                        if lows3 < lvl < last.close and lows3 <= z.high and last.close > last.open and d.delta[-1] > 0:
+                            out.append({"direction": "long", "anchor": lows3, "zone": (min(lows3, z.low), z.high),
+                                        "zone_id": f"liq_{z.kind}:{t}:{z.created}:{lvl:.6g}",
+                                        "zone_quality": min(1.0, z.strength + 0.15 + (0.1 if rv_sweep >= 2 else 0)),
+                                        "notes": [f"{lab} swept into {t} {z.kind}", f"sweep RVOL {rv_sweep:.1f}",
+                                                  "delta +"], "edge": z.high})
+                            break
+                else:
+                    liq = [(lvl, lab) for side, lvl, lab, _ in pools
+                           if side == "high" and z.low <= lvl <= z.high + 0.6 * atr]
+                    for lvl, lab in liq:
+                        if highs3 > lvl > last.close and highs3 >= z.low and last.close < last.open and d.delta[-1] < 0:
+                            out.append({"direction": "short", "anchor": highs3, "zone": (z.low, max(highs3, z.high)),
+                                        "zone_id": f"liq_{z.kind}:{t}:{z.created}:{lvl:.6g}",
+                                        "zone_quality": min(1.0, z.strength + 0.15 + (0.1 if rv_sweep >= 2 else 0)),
+                                        "notes": [f"{lab} swept into {t} {z.kind}", f"sweep RVOL {rv_sweep:.1f}",
+                                                  "delta -"], "edge": z.low})
+                            break
         return out
 
     def _s_range_breakout(self, ctx, tf, d, profile):

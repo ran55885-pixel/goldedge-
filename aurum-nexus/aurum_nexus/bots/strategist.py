@@ -69,6 +69,7 @@ def default_profile(symbol: str) -> dict:
             "sweep_reversal": _pb(),
             "bos_retest": _pb(entry="limit"),
             "fvg_ob": _pb(entry="limit"),
+            "liq_ob_fvg": _pb(weight=1.1),
             "range_breakout": _pb(weight=0.9),
             "orb": _pb(sessions=["london_open", "ny_open"], timeframes=["M1", "M5"]),
             "vwap_reversion": _pb(weight=0.9, sessions=["london", "newyork", "overlap"]),
