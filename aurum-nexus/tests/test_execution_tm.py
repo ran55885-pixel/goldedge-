@@ -198,3 +198,15 @@ def test_eta_text():
     w.now += 420
     e = tm.eta(t, make_ctx("XAUUSD", w), 2401.0, w.now)
     assert e["text"].startswith("TP1 ETA") and "elapsed 7m" in e["text"]
+
+
+def test_small_slippage_keeps_single_target_trade():
+    cfg, st, bus, book, w, ex, h, tm = exec_env()
+    mock = MockAdapter(symbols=["EURUSD"], minutes=3000, seed=2)
+    tk = mock.tick("EURUSD")
+    mock.script = [(10009, 0.00002)]          # 0.2 pip slippage on a 20-pip stop / exactly-1R single target
+    h.adapter, h.live = mock, True
+    c = make_candidate("EURUSD", entry=tk.ask, stop=tk.ask - 0.0020, tp1=tk.ask + 0.0020, tp2=tk.ask + 0.0020)
+    t = ex.open_market(plan_for(c), h, c, None, default_profile("EURUSD"), w.now)
+    assert t is not None and t["tp2"] >= t["tp1"] - 1e-12
+    assert not any("post-fill" in e["message"] for e in bus.recent())

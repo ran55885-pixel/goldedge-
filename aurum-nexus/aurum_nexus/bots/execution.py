@@ -210,6 +210,15 @@ class Execution(Bot):
         }
         # ---- post-fill RR check
         t["tp1"] = plan["tp1"] = rebase_tp1(plan["direction"], fill, plan["stop"], plan["tp1"], tp1_rr, self.cfg.min_rr)
+        # single-target trade (TP2 at/inside TP1): move the final target with the rebased TP1 so a few points of
+        # slippage cannot turn a 1.00R plan into a 0.998R instant close. Only for a shortfall of <= 0.05R (real
+        # slippage still closes) and never past the opposing obstacle.
+        risk_fill = (fill - plan["stop"]) * sign
+        rr_final_fill = (plan["tp2"] - fill) * sign / risk_fill if risk_fill > 0 else -1.0
+        if (plan["tp2"] - plan["tp1"]) * sign < 0 and rr_final_fill >= self.cfg.min_rr - 0.05:
+            ob = plan["obstacle"]
+            if ob is None or (ob - plan["tp1"]) * sign >= 0:
+                t["tp2"] = plan["tp2"] = plan["tp1"]
         ok2, rr2, why2 = rr_check(plan["direction"], fill, plan["stop"], plan["tp1"], plan["tp2"], plan["obstacle"],
                                   self.cfg.min_rr)
         self.book.add(t)
