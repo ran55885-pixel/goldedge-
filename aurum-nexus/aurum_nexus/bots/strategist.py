@@ -94,6 +94,8 @@ def default_profile(symbol: str) -> dict:
             "expansion": {"prefer": ["range_breakout", "orb", "second_leg"], "avoid": ["vwap_reversion"]},
             "compression": {"prefer": ["range_breakout", "sweep_reversal"], "avoid": []},
         },
+        # no new entries during these local hours (e.g. [15, 16, 17, 18, 19] = 15:00-19:59 Israel time)
+        "blocked_hours": {"tz": "Asia/Jerusalem", "hours": []},
         "orb_minutes": 15,
         "orb_stop": "mid",
         "risk_mult": 1.0,

@@ -541,6 +541,15 @@ class SignalBot(Bot):
             self._skip(ctx, raw, "no live quote")
             return None
         min_rr = self.cfg.min_rr
+        # --- blocked entry hours (per symbol profile, local clock of blocked_hours.tz)
+        bh = profile.get("blocked_hours") or {}
+        if bh.get("hours"):
+            from zoneinfo import ZoneInfo
+            from datetime import datetime as _dt
+            hr = _dt.fromtimestamp(ctx.now, ZoneInfo(bh.get("tz", "Asia/Jerusalem"))).hour
+            if hr in set(int(x) for x in bh["hours"]):
+                self._skip(ctx, raw, f"blocked hour {hr:02d}:00 {bh.get('tz', 'Asia/Jerusalem')}")
+                return None
         # --- ADR exhaustion
         if ctx.adr_used is not None and ctx.adr_used >= float(self.sc["adr_exhaustion_pct"]):
             day_dir = 1 if (ctx.price or 0) >= (ctx.daily.get("daily_open") or 0) else -1
